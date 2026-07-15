@@ -60,6 +60,14 @@
 
   .grid{ display:grid; grid-template-columns: 300px 1fr; gap:20px; align-items:start;}
   @media (max-width: 880px){ .grid{ grid-template-columns:1fr; } }
+  body:not(.admin-mode) #formPanel{ display:none; }
+  body:not(.admin-mode) .grid{ grid-template-columns: 1fr; }
+  .admin-hint{
+    border:1px solid var(--line); background:var(--panel); border-radius:10px;
+    padding:12px 16px; margin-bottom:20px; font-size:13px; color:var(--text-dim); line-height:1.6;
+  }
+  body.admin-mode .admin-hint{ display:none; }
+  .admin-hint strong{ color:var(--amber); }
 
   .panel{
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
@@ -80,7 +88,7 @@
   }
   input:focus, select:focus{ outline:none; border-color:var(--amber); }
   input[list]{ font-family:var(--font-mono); }
-  .row4{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .row4{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .hint{ font-size:11.5px; color:var(--text-dim); margin-top:5px; }
   .product-name{ font-family:var(--font-mono); color:var(--teal); font-size:13px; margin-top:6px; min-height:16px;}
@@ -164,10 +172,14 @@
   <div class="status">
     <span class="dot" id="connDot"></span>
     <span id="connText">연결 확인 중...</span>
+    <button class="btn-ghost" id="adminBtn" style="padding:6px 12px; font-size:12px; margin-left:8px;">관리자 로그인</button>
   </div>
 </div>
 
 <div class="wrap">
+  <div class="admin-hint" id="adminHint">
+    출고 지시 작성은 관리자만 가능합니다. 상단의 <strong>관리자 로그인</strong> 버튼으로 번호를 입력하면 작성 화면이 열려요. 출고 현황은 누구나 볼 수 있어요.
+  </div>
 
   <div class="setup" id="setupBanner" style="display:none;">
     <p>제품 마스터 데이터(<strong id="masterCount">251</strong>건)가 아직 저장되지 않았어요. 최초 1회만 눌러주세요.</p>
@@ -176,7 +188,7 @@
 
   <div class="grid">
 
-    <div class="panel">
+    <div class="panel" id="formPanel">
       <h2>출고 지시</h2>
 
       <label>날짜</label>
@@ -199,6 +211,7 @@
         <input type="number" id="fV2" placeholder="2호차" min="0">
         <input type="number" id="fV3" placeholder="3호차" min="0">
         <input type="number" id="fV4" placeholder="4호차" min="0">
+        <input type="number" id="fV5" placeholder="추가차량" min="0">
       </div>
 
       <label>위치 / 담당자 <span style="color:var(--text-dim); font-weight:400;">(선택)</span></label>
@@ -223,7 +236,7 @@
     </div>
 
     <div class="panel">
-      <h2>출고 목록</h2>
+      <h2>출고 현황</h2>
       <div class="filter-bar">
         <div>
           <label>조회 날짜</label>
@@ -257,12 +270,12 @@
           <thead>
             <tr>
               <th>코드</th><th>제품명</th><th>방식</th>
-              <th>1호</th><th>2호</th><th>3호</th><th>4호</th>
+              <th>1호차</th><th>2호차</th><th>3호차</th><th>4호차</th><th>추가차량</th>
               <th>합계</th><th>위치/담당자</th><th></th>
             </tr>
           </thead>
           <tbody id="orderRows">
-            <tr class="empty-row"><td colspan="10">해당 날짜의 출고 내역이 없습니다.</td></tr>
+            <tr class="empty-row"><td colspan="11">해당 날짜의 출고 내역이 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
@@ -297,6 +310,9 @@ const firebaseConfig = {
   messagingSenderId: "68092348540",
   appId: "1:68092348540:web:045820020787e7c03b61f9"
 };
+
+/* 관리자 번호 - 출고 지시 작성 화면을 열 때 필요한 번호예요. 원하는 숫자로 바꾸셔도 됩니다. */
+const ADMIN_PIN = "34361";
 
 const PRODUCTS_SEED = [{"code": "7813", "name": "001"}, {"code": "7678", "name": "008"}, {"code": "7694", "name": "009"}, {"code": "1124", "name": "241"}, {"code": "0947", "name": "011"}, {"code": "6650", "name": "011.2"}, {"code": "7724", "name": "013"}, {"code": "5470", "name": "013.1"}, {"code": "7732", "name": "014"}, {"code": "7122", "name": "014.1"}, {"code": "68160", "name": "307"}, {"code": "7791", "name": "123"}, {"code": "7767", "name": "016"}, {"code": "2531", "name": "016.1"}, {"code": "7775", "name": "105"}, {"code": "7783", "name": "115"}, {"code": "2202", "name": "115.1"}, {"code": "5852", "name": "233.3"}, {"code": "4834", "name": "245"}, {"code": "2245", "name": "149"}, {"code": "3298", "name": "191"}, {"code": "4006", "name": "192"}, {"code": "7716", "name": "012"}, {"code": "7759", "name": "015.1"}, {"code": "7740", "name": "015"}, {"code": "7084", "name": "151"}, {"code": "68160", "name": "307"}, {"code": "8151", "name": "048"}, {"code": "8186", "name": "052"}, {"code": "8194", "name": "053"}, {"code": "8208", "name": "054"}, {"code": "8216", "name": "058"}, {"code": "8232", "name": "097"}, {"code": "6793", "name": "209"}, {"code": "8356", "name": "137"}, {"code": "8160", "name": "049"}, {"code": "092668160", "name": "307"}, {"code": "5613", "name": "051"}, {"code": "8305", "name": "122"}, {"code": "9077", "name": "230.1"}, {"code": "4054", "name": "236"}, {"code": "8313", "name": "133"}, {"code": "8321", "name": "134"}, {"code": "8330", "name": "135"}, {"code": "5621", "name": "210"}, {"code": "5630", "name": "211.1"}, {"code": "3015", "name": "146"}, {"code": "0099", "name": "311"}, {"code": "8348", "name": "136"}, {"code": "8364", "name": "138"}, {"code": "7186", "name": "002"}, {"code": "9436", "name": "002.1"}, {"code": "3204", "name": "299"}, {"code": "8593", "name": "046"}, {"code": "5893", "name": "047"}, {"code": "5907", "name": "179"}, {"code": "4949", "name": "181"}, {"code": "5915", "name": "182"}, {"code": "5923", "name": "183"}, {"code": "9024", "name": "303"}, {"code": "8615", "name": "076"}, {"code": "8658", "name": "116"}, {"code": "8660", "name": "306"}, {"code": "8682", "name": ""}, {"code": "8690", "name": ""}, {"code": "8704", "name": ""}, {"code": "8712", "name": ""}, {"code": "8720", "name": ""}, {"code": "8739", "name": ""}, {"code": "7872", "name": ""}, {"code": "8747", "name": "079"}, {"code": "8755", "name": ""}, {"code": "8771", "name": ""}, {"code": "8780", "name": ""}, {"code": "8798", "name": ""}, {"code": "8801", "name": ""}, {"code": "9256", "name": ""}, {"code": "1560", "name": "112.2"}, {"code": "8753", "name": "304"}, {"code": "0480", "name": ""}, {"code": "1850", "name": "302"}, {"code": "7864", "name": ""}, {"code": "0853", "name": ""}, {"code": "8361", "name": ""}, {"code": "8240", "name": "100"}, {"code": "3023", "name": "147"}, {"code": "8020", "name": "082"}, {"code": "3955", "name": "085"}, {"code": "8100", "name": "125"}, {"code": "8119", "name": "126"}, {"code": "8127", "name": "127"}, {"code": "8143", "name": "130"}, {"code": "2990", "name": ""}, {"code": "3007", "name": ""}, {"code": "4102", "name": ""}, {"code": "7902", "name": ""}, {"code": "7910", "name": "021"}, {"code": "7929", "name": "022"}, {"code": "7937", "name": "023"}, {"code": "7945", "name": "024"}, {"code": "7953", "name": ""}, {"code": "7961", "name": ""}, {"code": "7970", "name": "027"}, {"code": "8003", "name": "077"}, {"code": "8011", "name": "081"}, {"code": "8038", "name": "083"}, {"code": "8046", "name": "084"}, {"code": "8062", "name": "099"}, {"code": "8070", "name": "102"}, {"code": "8135", "name": "129"}, {"code": "8097", "name": "104"}, {"code": "4145", "name": "164"}, {"code": "4161", "name": "174"}, {"code": "4188", "name": "178"}, {"code": "4382", "name": "184"}, {"code": "4390", "name": "198"}, {"code": "4404", "name": "199"}, {"code": "4374", "name": "189"}, {"code": "0400", "name": "189.1"}, {"code": "4412", "name": "200"}, {"code": "4439", "name": "202"}, {"code": "4447", "name": "203"}, {"code": "4455", "name": "204"}, {"code": "4560", "name": "212"}, {"code": "4579", "name": "213"}, {"code": "4587", "name": "214"}, {"code": "4595", "name": "215"}, {"code": "4609", "name": "216"}, {"code": "4617", "name": "217"}, {"code": "4625", "name": "218"}, {"code": "4552", "name": "219"}, {"code": "4641", "name": "220"}, {"code": "7006", "name": "221"}, {"code": "9519", "name": "213.1"}, {"code": "9527", "name": "214.1"}, {"code": "0070", "name": "216.1"}, {"code": "0142", "name": "217.1"}, {"code": "0614", "name": "218.1"}, {"code": "7319", "name": "221.1"}, {"code": "0630", "name": "198.1"}, {"code": "1247", "name": "223"}, {"code": "8372", "name": "055"}, {"code": "8380", "name": "056"}, {"code": "8399", "name": "057"}, {"code": "8402", "name": "101"}, {"code": "8136", "name": "144"}, {"code": "0873", "name": "142"}, {"code": "4483", "name": "4315(파랑)"}, {"code": "3716", "name": "150"}, {"code": "5214", "name": "038.1"}, {"code": "6874", "name": "308"}, {"code": "4650", "name": "4315(회색)"}, {"code": "0008", "name": "PEU"}, {"code": "8432", "name": "310"}, {"code": "8753", "name": "304"}, {"code": "8537", "name": "199.1"}, {"code": "9879", "name": "227"}, {"code": "9186", "name": "313"}, {"code": "1150", "name": "229"}, {"code": "4910", "name": "312"}, {"code": "6500", "name": "315"}, {"code": "1527", "name": "314"}, {"code": "9157", "name": "226"}, {"code": "8537", "name": "199.1"}, {"code": "4761", "name": "225"}, {"code": "3806", "name": "224"}, {"code": "2888", "name": "314.1"}, {"code": "6297", "name": "321"}, {"code": "6742", "name": "431"}, {"code": "8768", "name": "008.1"}, {"code": "4604", "name": "038.2"}, {"code": "0007", "name": "DIF"}, {"code": "8766", "name": "002.2"}, {"code": "3215", "name": "014.4"}, {"code": "4315", "name": "014.3"}, {"code": "6320", "name": "309"}, {"code": "8890", "name": "011.4"}, {"code": "5369", "name": "231"}, {"code": "5164", "name": "158.1"}, {"code": "5062", "name": "318"}, {"code": "0100", "name": "319"}, {"code": "7443", "name": "221.2"}, {"code": "6174", "name": "316"}, {"code": "6709", "name": "320"}, {"code": "0260", "name": "115.2"}, {"code": "0174", "name": "316"}, {"code": "8107", "name": "049.1"}, {"code": "6346", "name": "115.2"}, {"code": "7202", "name": "233.2"}, {"code": "85470", "name": "432"}, {"code": "9183", "name": "148"}, {"code": "85470", "name": "432"}, {"code": "5561", "name": "234.2"}, {"code": "9183", "name": "148"}, {"code": "8275", "name": "119"}, {"code": "8283", "name": "120"}, {"code": "8267", "name": "118"}, {"code": "4205", "name": "038.3"}, {"code": "7531", "name": "322"}, {"code": "08521", "name": "321"}, {"code": "2607", "name": "156.1"}, {"code": "5448", "name": "162.1"}, {"code": "8809", "name": "226.1"}, {"code": "2069", "name": "320.1"}, {"code": "0865", "name": "141"}, {"code": "7190", "name": "221.3"}, {"code": "7549", "name": "011.5"}, {"code": "7522", "name": "012.1"}, {"code": "7271", "name": "013.2"}, {"code": "7263", "name": "013.3"}, {"code": "7247", "name": "014.4"}, {"code": "7239", "name": "014.5"}, {"code": "7212", "name": "015.2"}, {"code": "7107", "name": "105.1"}, {"code": "6569", "name": "149.1"}, {"code": "4706", "name": "6428"}, {"code": "7112", "name": "299.2"}, {"code": "6060", "name": "4328(회색)"}, {"code": "3627", "name": "SLH포장박스"}, {"code": "2636", "name": "SLH방청유지"}, {"code": "3061", "name": "235"}, {"code": "0001", "name": "NPC회색"}, {"code": "0002", "name": "NPC보라"}, {"code": "2409", "name": "150"}, {"code": "0003", "name": "lid"}, {"code": "0004", "name": "sleeve"}, {"code": "0005", "name": "pallet"}, {"code": "0006", "name": "blister"}, {"code": "1001", "name": "cap1"}, {"code": "1002", "name": "cap2"}, {"code": "1003", "name": "cap3"}, {"code": "1004", "name": "cap4"}, {"code": "1005", "name": "cap5"}, {"code": "1006", "name": "cap6"}, {"code": "1007", "name": "cap7"}, {"code": "1008", "name": "cap8"}, {"code": "1009", "name": "cap9"}, {"code": "1010", "name": "cap10"}, {"code": "1011", "name": "cap11"}, {"code": "8581", "name": "324"}, {"code": "0883", "name": "325"}, {"code": "0881", "name": "326"}, {"code": "7924", "name": "328"}, {"code": "2850", "name": "244"}, {"code": "2869", "name": "243"}, {"code": "3300", "name": "4315(검정)"}, {"code": "2997", "name": "3215(검정)"}, {"code": "6320", "name": "4328(검정)"}, {"code": "4483", "name": "4315(보라)"}, {"code": "3317", "name": "6429"}, {"code": "4471", "name": "3215(회색)"}];
 
@@ -396,11 +412,11 @@ document.getElementById('fCode').addEventListener('input', (e)=>{
   document.getElementById('fName').textContent = productsMap[code] ? '→ ' + productsMap[code] : '';
 });
 
-['fV1','fV2','fV3','fV4'].forEach(id=>{
+['fV1','fV2','fV3','fV4','fV5'].forEach(id=>{
   document.getElementById(id).addEventListener('input', updateLiveQty);
 });
 function updateLiveQty(){
-  const sum = ['fV1','fV2','fV3','fV4'].reduce((a,id)=> a + (Number(document.getElementById(id).value)||0), 0);
+  const sum = ['fV1','fV2','fV3','fV4','fV5'].reduce((a,id)=> a + (Number(document.getElementById(id).value)||0), 0);
   document.getElementById('qtyLive').textContent = sum;
 }
 
@@ -415,13 +431,14 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   const v2 = Number(document.getElementById('fV2').value)||0;
   const v3 = Number(document.getElementById('fV3').value)||0;
   const v4 = Number(document.getElementById('fV4').value)||0;
-  const qty = v1+v2+v3+v4;
+  const v5 = Number(document.getElementById('fV5').value)||0;
+  const qty = v1+v2+v3+v4+v5;
   const shipType = document.getElementById('fShipType').value;
 
   const order = {
     date, productCode: code, productName: productsMap[code] || '',
-    shipType, v1,v2,v3,v4, qty,
-    v1Done: false, v2Done: false, v3Done: false, v4Done: false,
+    shipType, v1,v2,v3,v4,v5, qty,
+    v1Done: false, v2Done: false, v3Done: false, v4Done: false, v5Done: false,
     ep1Qty: shipType === 'EP1' ? qty : 0,
     mailQty: shipType === '메일' ? qty : 0,
     note: document.getElementById('fNote').value.trim(),
@@ -437,6 +454,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     document.getElementById('fV2').value = '';
     document.getElementById('fV3').value = '';
     document.getElementById('fV4').value = '';
+    document.getElementById('fV5').value = '';
     updateLiveQty();
   }catch(e){
     toast('지시 실패: ' + e.message, true);
@@ -458,7 +476,7 @@ function listenOrders(){
       });
       renderOrders();
     }, err=>{
-      toast('목록 조회 실패: ' + err.message, true);
+      toast('현황 조회 실패: ' + err.message, true);
     });
 }
 
@@ -478,7 +496,7 @@ function renderOrders(){
   const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : currentOrders;
   tbody.innerHTML = '';
   if(displayed.length === 0){
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">해당 조건의 출고 내역이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 출고 내역이 없습니다.</td></tr>';
   }else{
     displayed.forEach(o=>{
       const tr = document.createElement('tr');
@@ -486,7 +504,7 @@ function renderOrders(){
         '<td>'+o.productCode+'</td>'+
         '<td>'+(o.productName||'-')+'</td>'+
         '<td><span class="tag '+(o.shipType==='EP1'?'ep1':'mail')+'">'+o.shipType+'</span></td>'+
-        '<td>'+vqtyCell(o,1)+'</td><td>'+vqtyCell(o,2)+'</td><td>'+vqtyCell(o,3)+'</td><td>'+vqtyCell(o,4)+'</td>'+
+        '<td>'+vqtyCell(o,1)+'</td><td>'+vqtyCell(o,2)+'</td><td>'+vqtyCell(o,3)+'</td><td>'+vqtyCell(o,4)+'</td><td>'+vqtyCell(o,5)+'</td>'+
         '<td>'+o.qty+'</td>'+
         '<td style="font-family:var(--font-body);">'+(o.note||'-')+'</td>'+
         '<td><button class="btn-danger" data-id="'+o.id+'">삭제</button></td>';
@@ -522,8 +540,8 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   const locFilter = document.getElementById('viewLocation').value;
   const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : currentOrders;
   if(displayed.length === 0){ toast('내보낼 데이터가 없습니다.', true); return; }
-  const header = ['날짜','제품코드','제품명','방식','1호차','2호차','3호차','4호차','합계','위치/담당자'];
-  const rows = displayed.map(o=>[o.date,o.productCode,o.productName,o.shipType,o.v1,o.v2,o.v3,o.v4,o.qty,o.note]);
+  const header = ['날짜','제품코드','제품명','방식','1호차','2호차','3호차','4호차','추가차량','합계','위치/담당자'];
+  const rows = displayed.map(o=>[o.date,o.productCode,o.productName,o.shipType,o.v1,o.v2,o.v3,o.v4,o.v5,o.qty,o.note]);
   const csv = [header, ...rows].map(r=> r.map(v=> '"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
@@ -532,6 +550,30 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   a.click();
   URL.revokeObjectURL(url);
 });
+
+function setAdminMode(on){
+  document.body.classList.toggle('admin-mode', on);
+  document.getElementById('adminBtn').textContent = on ? '관리자 로그아웃' : '관리자 로그인';
+  if(on) sessionStorage.setItem('isAdmin','1'); else sessionStorage.removeItem('isAdmin');
+}
+
+document.getElementById('adminBtn').addEventListener('click', ()=>{
+  if(document.body.classList.contains('admin-mode')){
+    setAdminMode(false);
+    toast('관리자 로그아웃 되었습니다.');
+    return;
+  }
+  const input = prompt('관리자 번호를 입력하세요');
+  if(input === null) return;
+  if(input.trim() === ADMIN_PIN){
+    setAdminMode(true);
+    toast('관리자 모드로 전환되었습니다.');
+  }else{
+    toast('번호가 올바르지 않습니다.', true);
+  }
+});
+
+try{ if(sessionStorage.getItem('isAdmin') === '1') setAdminMode(true); }catch(e){}
 
 document.getElementById('fDate').value = todayStr();
 document.getElementById('viewDate').value = todayStr();
