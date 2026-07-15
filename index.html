@@ -65,6 +65,7 @@
   @media (max-width: 880px){ .grid{ grid-template-columns:1fr; } }
   body:not(.admin-mode) #formPanel{ display:none; }
   body:not(.admin-mode) .grid{ grid-template-columns: 1fr; }
+  body:not(.admin-mode) .btn-danger{ display:none; }
   .admin-hint{
     border:1px solid var(--line); background:var(--panel); border-radius:10px;
     padding:12px 16px; margin-bottom:20px; font-size:13px; color:var(--text-dim); line-height:1.6;
@@ -133,9 +134,14 @@
   .vqty.empty{ color:var(--text-dim); cursor:default; font-weight:400; }
   .vqty.pending{ background:rgba(224,96,79,0.15); color:var(--red); }
   .vqty.done{ background:rgba(47,191,166,0.18); color:var(--teal); }
-  .status-legend{ display:flex; gap:14px; align-items:center; font-size:11.5px; color:var(--text-dim); margin-top:10px;}
-  .status-legend .dotlbl{ display:flex; align-items:center; gap:5px; }
-  .status-legend .sw{ width:10px; height:10px; border-radius:3px; display:inline-block; }
+  .status-legend{
+    display:flex; gap:20px; align-items:center; flex-wrap:wrap;
+    font-size:15px; font-weight:600; color:var(--text); margin:4px 0 16px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+    padding:12px 16px;
+  }
+  .status-legend .dotlbl{ display:flex; align-items:center; gap:8px; }
+  .status-legend .sw{ width:14px; height:14px; border-radius:4px; display:inline-block; flex-shrink:0; }
   .empty-row td{ text-align:center; color:var(--text-dim); font-family:var(--font-body); padding:30px 10px;}
 
   .totals{
@@ -231,6 +237,8 @@
         <option value="사출">사출</option>
         <option value="사출행크스">사출행크스</option>
         <option value="중부물류">중부물류</option>
+        <option value="RSTM">RSTM</option>
+        <option value="가이드">가이드</option>
       </select>
 
       <div class="qty-live">
@@ -260,6 +268,8 @@
             <option value="사출">사출</option>
             <option value="사출행크스">사출행크스</option>
             <option value="중부물류">중부물류</option>
+            <option value="RSTM">RSTM</option>
+            <option value="가이드">가이드</option>
           </select>
         </div>
         <div class="toolbar-right" style="flex:0;">
@@ -288,8 +298,8 @@
 
       <div class="totals">
         <div class="box"><div class="lbl">전체 신청수량</div><div class="val" id="totQty">0</div></div>
-        <div class="box teal"><div class="lbl">EP1 출고</div><div class="val" id="totEp1Pct">0%</div><div class="pct" id="totEp1">0건</div></div>
-        <div class="box amber"><div class="lbl">메일 출고</div><div class="val" id="totMailPct">0%</div><div class="pct" id="totMail">0건</div></div>
+        <div class="box teal"><div class="lbl">EP1 출고완료</div><div class="val" id="totEp1Pct">0%</div><div class="pct" id="totEp1">0건</div></div>
+        <div class="box amber"><div class="lbl">메일 출고완료</div><div class="val" id="totMailPct">0%</div><div class="pct" id="totMail">0건</div></div>
       </div>
     </div>
 
@@ -526,6 +536,7 @@ function renderOrders(){
   });
   tbody.querySelectorAll('.btn-danger').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      if(!document.body.classList.contains('admin-mode')){ toast('관리자만 삭제할 수 있습니다.', true); return; }
       if(!confirm('이 출고 내역을 삭제할까요?')) return;
       try{ await db.collection('orders').doc(btn.dataset.id).delete(); toast('삭제 완료'); }
       catch(e){ toast('삭제 실패: ' + e.message, true); }
@@ -533,8 +544,9 @@ function renderOrders(){
   });
 
   const totQty = displayed.reduce((a,o)=>a+o.qty,0);
-  const totEp1 = displayed.reduce((a,o)=>a+(o.ep1Qty||0),0);
-  const totMail = displayed.reduce((a,o)=>a+(o.mailQty||0),0);
+  const completedQty = o => [1,2,3,4,5].reduce((s,n)=> s + ((o['v'+n+'Done']) ? (o['v'+n]||0) : 0), 0);
+  const totEp1 = displayed.filter(o=>o.shipType==='EP1').reduce((a,o)=>a+completedQty(o),0);
+  const totMail = displayed.filter(o=>o.shipType==='메일').reduce((a,o)=>a+completedQty(o),0);
   const ep1Pct = totQty > 0 ? Math.round(totEp1/totQty*100) : 0;
   const mailPct = totQty > 0 ? Math.round(totMail/totQty*100) : 0;
   document.getElementById('totQty').textContent = totQty;
