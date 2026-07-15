@@ -66,12 +66,24 @@
   body:not(.admin-mode) #formPanel{ display:none; }
   body:not(.admin-mode) .grid{ grid-template-columns: 1fr; }
   body:not(.admin-mode) .btn-danger{ display:none; }
-  .admin-hint{
-    border:1px solid var(--line); background:var(--panel); border-radius:10px;
-    padding:12px 16px; margin-bottom:20px; font-size:13px; color:var(--text-dim); line-height:1.6;
+  body:not(.admin-mode) .vqty.pending, body:not(.admin-mode) .vqty.partial, body:not(.admin-mode) .vqty.done{ cursor:default; }
+  body:not(.admin-mode) .vqty.pending:hover, body:not(.admin-mode) .vqty.partial:hover, body:not(.admin-mode) .vqty.done:hover{ opacity:1; }
+  .master-panel{
+    border:1px solid var(--amber); background:var(--panel); border-radius:10px;
+    padding:14px 16px; margin-bottom:20px;
   }
-  body.admin-mode .admin-hint{ display:none; }
-  .admin-hint strong{ color:var(--amber); }
+  .master-panel-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .master-panel-grid{
+    display:grid; grid-template-columns:repeat(10, 1fr); gap:6px;
+    max-height:260px; overflow-y:auto; padding-right:4px;
+  }
+  .master-panel-grid label{
+    display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-size:12px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:5px 6px;
+    margin:0; cursor:pointer;
+  }
+  .master-panel-grid label.approved{ border-color:var(--teal); color:var(--teal); }
+  @media (max-width: 880px){ .master-panel-grid{ grid-template-columns:repeat(5, 1fr); } }
 
   .panel{
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
@@ -119,7 +131,7 @@
   .filter-bar > div{ flex:1; min-width:140px;}
   .filter-bar label{ margin-top:0; }
 
-  table{ width:100%; border-collapse:collapse; font-size:15.5px; }
+  table{ width:100%; border-collapse:separate; border-spacing:0; font-size:15.5px; }
   thead th{
     text-align:left; font-size:12.5px; text-transform:uppercase; letter-spacing:0.6px;
     color:var(--text-dim); padding:10px 10px; border-bottom:1px solid var(--line); font-weight:600;
@@ -133,6 +145,7 @@
   .vqty:hover{ opacity:0.8; }
   .vqty.empty{ color:var(--text-dim); cursor:default; font-weight:400; }
   .vqty.pending{ background:rgba(224,96,79,0.15); color:var(--red); }
+  .vqty.partial{ background:rgba(240,168,40,0.18); color:var(--amber); }
   .vqty.done{ background:rgba(47,191,166,0.18); color:var(--teal); }
   .status-legend{
     display:flex; gap:20px; align-items:center; flex-wrap:wrap;
@@ -185,12 +198,18 @@
     <span class="dot" id="connDot"></span>
     <span id="connText">연결 확인 중...</span>
     <button class="btn-ghost" id="adminBtn" style="padding:6px 12px; font-size:12px; margin-left:8px;">관리자 로그인</button>
+    <button class="btn-ghost" id="masterBtn" style="padding:6px 12px; font-size:12px; margin-left:8px; display:none;">관리자 승인 관리</button>
   </div>
 </div>
 
 <div class="wrap">
-  <div class="admin-hint" id="adminHint">
-    출고 지시 작성은 관리자만 가능합니다. 상단의 <strong>관리자 로그인</strong> 버튼으로 번호를 입력하면 작성 화면이 열려요. 출고 현황은 누구나 볼 수 있어요.
+  <div class="master-panel" id="masterPanel" style="display:none;">
+    <div class="master-panel-head">
+      <strong>관리자 번호 승인 관리</strong>
+      <span style="color:var(--text-dim); font-size:12px;">체크된 번호만 관리자로 로그인할 수 있어요</span>
+      <button class="btn-ghost" id="closeMasterPanel" style="margin-left:auto; padding:4px 10px; font-size:12px;">닫기</button>
+    </div>
+    <div class="master-panel-grid" id="masterPanelGrid"></div>
   </div>
 
   <div class="setup" id="setupBanner" style="display:none;">
@@ -278,7 +297,8 @@
       </div>
 
       <div class="status-legend">
-        <span class="dotlbl"><span class="sw" style="background:var(--red);"></span>출고대기 (클릭하면 완료 처리)</span>
+        <span class="dotlbl"><span class="sw" style="background:var(--red);"></span>미출고 (관리자 로그인 시 클릭해서 입력)</span>
+        <span class="dotlbl"><span class="sw" style="background:var(--amber);"></span>부분출고</span>
         <span class="dotlbl"><span class="sw" style="background:var(--teal);"></span>출고완료</span>
       </div>
       <div style="overflow-x:auto;">
@@ -326,8 +346,11 @@ const firebaseConfig = {
   appId: "1:68092348540:web:045820020787e7c03b61f9"
 };
 
-/* 관리자 번호 - 출고 지시 작성 화면을 열 때 필요한 번호예요. 원하는 숫자로 바꾸셔도 됩니다. */
-const ADMIN_PIN = "34361";
+/* 관리자번호 로그인 - 001~100번 중 아무 번호로나 로그인하면 출고 지시 작성이 가능해요. */
+const EMPLOYEE_MIN = 1;
+const EMPLOYEE_MAX = 100;
+/* 마스터관리자 암호 - 이 암호로 로그인하면 관리자 번호 승인/취소 화면이 열려요. 꼭 다른 값으로 바꿔서 사용하세요. */
+const MASTER_PIN = "34361";
 
 const PRODUCTS_SEED = [{"code": "7813", "name": "001"}, {"code": "7678", "name": "008"}, {"code": "7694", "name": "009"}, {"code": "1124", "name": "241"}, {"code": "0947", "name": "011"}, {"code": "6650", "name": "011.2"}, {"code": "7724", "name": "013"}, {"code": "5470", "name": "013.1"}, {"code": "7732", "name": "014"}, {"code": "7122", "name": "014.1"}, {"code": "68160", "name": "307"}, {"code": "7791", "name": "123"}, {"code": "7767", "name": "016"}, {"code": "2531", "name": "016.1"}, {"code": "7775", "name": "105"}, {"code": "7783", "name": "115"}, {"code": "2202", "name": "115.1"}, {"code": "5852", "name": "233.3"}, {"code": "4834", "name": "245"}, {"code": "2245", "name": "149"}, {"code": "3298", "name": "191"}, {"code": "4006", "name": "192"}, {"code": "7716", "name": "012"}, {"code": "7759", "name": "015.1"}, {"code": "7740", "name": "015"}, {"code": "7084", "name": "151"}, {"code": "68160", "name": "307"}, {"code": "8151", "name": "048"}, {"code": "8186", "name": "052"}, {"code": "8194", "name": "053"}, {"code": "8208", "name": "054"}, {"code": "8216", "name": "058"}, {"code": "8232", "name": "097"}, {"code": "6793", "name": "209"}, {"code": "8356", "name": "137"}, {"code": "8160", "name": "049"}, {"code": "092668160", "name": "307"}, {"code": "5613", "name": "051"}, {"code": "8305", "name": "122"}, {"code": "9077", "name": "230.1"}, {"code": "4054", "name": "236"}, {"code": "8313", "name": "133"}, {"code": "8321", "name": "134"}, {"code": "8330", "name": "135"}, {"code": "5621", "name": "210"}, {"code": "5630", "name": "211.1"}, {"code": "3015", "name": "146"}, {"code": "0099", "name": "311"}, {"code": "8348", "name": "136"}, {"code": "8364", "name": "138"}, {"code": "7186", "name": "002"}, {"code": "9436", "name": "002.1"}, {"code": "3204", "name": "299"}, {"code": "8593", "name": "046"}, {"code": "5893", "name": "047"}, {"code": "5907", "name": "179"}, {"code": "4949", "name": "181"}, {"code": "5915", "name": "182"}, {"code": "5923", "name": "183"}, {"code": "9024", "name": "303"}, {"code": "8615", "name": "076"}, {"code": "8658", "name": "116"}, {"code": "8660", "name": "306"}, {"code": "8682", "name": ""}, {"code": "8690", "name": ""}, {"code": "8704", "name": ""}, {"code": "8712", "name": ""}, {"code": "8720", "name": ""}, {"code": "8739", "name": ""}, {"code": "7872", "name": ""}, {"code": "8747", "name": "079"}, {"code": "8755", "name": ""}, {"code": "8771", "name": ""}, {"code": "8780", "name": ""}, {"code": "8798", "name": ""}, {"code": "8801", "name": ""}, {"code": "9256", "name": ""}, {"code": "1560", "name": "112.2"}, {"code": "8753", "name": "304"}, {"code": "0480", "name": ""}, {"code": "1850", "name": "302"}, {"code": "7864", "name": ""}, {"code": "0853", "name": ""}, {"code": "8361", "name": ""}, {"code": "8240", "name": "100"}, {"code": "3023", "name": "147"}, {"code": "8020", "name": "082"}, {"code": "3955", "name": "085"}, {"code": "8100", "name": "125"}, {"code": "8119", "name": "126"}, {"code": "8127", "name": "127"}, {"code": "8143", "name": "130"}, {"code": "2990", "name": ""}, {"code": "3007", "name": ""}, {"code": "4102", "name": ""}, {"code": "7902", "name": ""}, {"code": "7910", "name": "021"}, {"code": "7929", "name": "022"}, {"code": "7937", "name": "023"}, {"code": "7945", "name": "024"}, {"code": "7953", "name": ""}, {"code": "7961", "name": ""}, {"code": "7970", "name": "027"}, {"code": "8003", "name": "077"}, {"code": "8011", "name": "081"}, {"code": "8038", "name": "083"}, {"code": "8046", "name": "084"}, {"code": "8062", "name": "099"}, {"code": "8070", "name": "102"}, {"code": "8135", "name": "129"}, {"code": "8097", "name": "104"}, {"code": "4145", "name": "164"}, {"code": "4161", "name": "174"}, {"code": "4188", "name": "178"}, {"code": "4382", "name": "184"}, {"code": "4390", "name": "198"}, {"code": "4404", "name": "199"}, {"code": "4374", "name": "189"}, {"code": "0400", "name": "189.1"}, {"code": "4412", "name": "200"}, {"code": "4439", "name": "202"}, {"code": "4447", "name": "203"}, {"code": "4455", "name": "204"}, {"code": "4560", "name": "212"}, {"code": "4579", "name": "213"}, {"code": "4587", "name": "214"}, {"code": "4595", "name": "215"}, {"code": "4609", "name": "216"}, {"code": "4617", "name": "217"}, {"code": "4625", "name": "218"}, {"code": "4552", "name": "219"}, {"code": "4641", "name": "220"}, {"code": "7006", "name": "221"}, {"code": "9519", "name": "213.1"}, {"code": "9527", "name": "214.1"}, {"code": "0070", "name": "216.1"}, {"code": "0142", "name": "217.1"}, {"code": "0614", "name": "218.1"}, {"code": "7319", "name": "221.1"}, {"code": "0630", "name": "198.1"}, {"code": "1247", "name": "223"}, {"code": "8372", "name": "055"}, {"code": "8380", "name": "056"}, {"code": "8399", "name": "057"}, {"code": "8402", "name": "101"}, {"code": "8136", "name": "144"}, {"code": "0873", "name": "142"}, {"code": "4483", "name": "4315(파랑)"}, {"code": "3716", "name": "150"}, {"code": "5214", "name": "038.1"}, {"code": "6874", "name": "308"}, {"code": "4650", "name": "4315(회색)"}, {"code": "0008", "name": "PEU"}, {"code": "8432", "name": "310"}, {"code": "8753", "name": "304"}, {"code": "8537", "name": "199.1"}, {"code": "9879", "name": "227"}, {"code": "9186", "name": "313"}, {"code": "1150", "name": "229"}, {"code": "4910", "name": "312"}, {"code": "6500", "name": "315"}, {"code": "1527", "name": "314"}, {"code": "9157", "name": "226"}, {"code": "8537", "name": "199.1"}, {"code": "4761", "name": "225"}, {"code": "3806", "name": "224"}, {"code": "2888", "name": "314.1"}, {"code": "6297", "name": "321"}, {"code": "6742", "name": "431"}, {"code": "8768", "name": "008.1"}, {"code": "4604", "name": "038.2"}, {"code": "0007", "name": "DIF"}, {"code": "8766", "name": "002.2"}, {"code": "3215", "name": "014.4"}, {"code": "4315", "name": "014.3"}, {"code": "6320", "name": "309"}, {"code": "8890", "name": "011.4"}, {"code": "5369", "name": "231"}, {"code": "5164", "name": "158.1"}, {"code": "5062", "name": "318"}, {"code": "0100", "name": "319"}, {"code": "7443", "name": "221.2"}, {"code": "6174", "name": "316"}, {"code": "6709", "name": "320"}, {"code": "0260", "name": "115.2"}, {"code": "0174", "name": "316"}, {"code": "8107", "name": "049.1"}, {"code": "6346", "name": "115.2"}, {"code": "7202", "name": "233.2"}, {"code": "85470", "name": "432"}, {"code": "9183", "name": "148"}, {"code": "85470", "name": "432"}, {"code": "5561", "name": "234.2"}, {"code": "9183", "name": "148"}, {"code": "8275", "name": "119"}, {"code": "8283", "name": "120"}, {"code": "8267", "name": "118"}, {"code": "4205", "name": "038.3"}, {"code": "7531", "name": "322"}, {"code": "08521", "name": "321"}, {"code": "2607", "name": "156.1"}, {"code": "5448", "name": "162.1"}, {"code": "8809", "name": "226.1"}, {"code": "2069", "name": "320.1"}, {"code": "0865", "name": "141"}, {"code": "7190", "name": "221.3"}, {"code": "7549", "name": "011.5"}, {"code": "7522", "name": "012.1"}, {"code": "7271", "name": "013.2"}, {"code": "7263", "name": "013.3"}, {"code": "7247", "name": "014.4"}, {"code": "7239", "name": "014.5"}, {"code": "7212", "name": "015.2"}, {"code": "7107", "name": "105.1"}, {"code": "6569", "name": "149.1"}, {"code": "4706", "name": "6428"}, {"code": "7112", "name": "299.2"}, {"code": "6060", "name": "4328(회색)"}, {"code": "3627", "name": "SLH포장박스"}, {"code": "2636", "name": "SLH방청유지"}, {"code": "3061", "name": "235"}, {"code": "0001", "name": "NPC회색"}, {"code": "0002", "name": "NPC보라"}, {"code": "2409", "name": "150"}, {"code": "0003", "name": "lid"}, {"code": "0004", "name": "sleeve"}, {"code": "0005", "name": "pallet"}, {"code": "0006", "name": "blister"}, {"code": "1001", "name": "cap1"}, {"code": "1002", "name": "cap2"}, {"code": "1003", "name": "cap3"}, {"code": "1004", "name": "cap4"}, {"code": "1005", "name": "cap5"}, {"code": "1006", "name": "cap6"}, {"code": "1007", "name": "cap7"}, {"code": "1008", "name": "cap8"}, {"code": "1009", "name": "cap9"}, {"code": "1010", "name": "cap10"}, {"code": "1011", "name": "cap11"}, {"code": "8581", "name": "324"}, {"code": "0883", "name": "325"}, {"code": "0881", "name": "326"}, {"code": "7924", "name": "328"}, {"code": "2850", "name": "244"}, {"code": "2869", "name": "243"}, {"code": "3300", "name": "4315(검정)"}, {"code": "2997", "name": "3215(검정)"}, {"code": "6320", "name": "4328(검정)"}, {"code": "4483", "name": "4315(보라)"}, {"code": "3317", "name": "6429"}, {"code": "4471", "name": "3215(회색)"}];
 
@@ -457,7 +480,8 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     ep1Qty: shipType === 'EP1' ? qty : 0,
     mailQty: shipType === '메일' ? qty : 0,
     note: document.getElementById('fNote').value.trim(),
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdBy: currentEmployeeNo || ''
   };
 
   try{
@@ -498,45 +522,119 @@ function listenOrders(){
 document.getElementById('viewDate').addEventListener('change', ()=>{ if(db) listenOrders(); });
 document.getElementById('viewLocation').addEventListener('change', renderOrders);
 
+const FIXED_LOCATION_ORDER = ["SLH ass'y","LTMA","감속기","Bearing","사출","사출행크스","Belt&Chain","가이드","RSTM","중부물류"];
+function sortByFixedLocation(list){
+  return list.slice().sort((a,b)=>{
+    let ia = FIXED_LOCATION_ORDER.indexOf(a.note);
+    let ib = FIXED_LOCATION_ORDER.indexOf(b.note);
+    if(ia === -1) ia = FIXED_LOCATION_ORDER.length;
+    if(ib === -1) ib = FIXED_LOCATION_ORDER.length;
+    return ia - ib;
+  });
+}
+
+const LOCATION_COLORS = {
+  "SLH ass'y": "#6C8EBF",
+  "LTMA": "#82B366",
+  "감속기": "#9673A6",
+  "Bearing": "#D6B656",
+  "Belt&Chain": "#B85450",
+  "사출": "#6FA8DC",
+  "사출행크스": "#A64D79",
+  "중부물류": "#45818E",
+  "RSTM": "#E69138",
+  "가이드": "#999999"
+};
+function locationColor(note){
+  return LOCATION_COLORS[note] || 'transparent';
+}
+function locationBg(note){
+  const hex = LOCATION_COLORS[note];
+  if(!hex) return 'transparent';
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return 'rgba('+r+','+g+','+b+',0.42)';
+}
+function locationBorderColor(note){
+  const hex = LOCATION_COLORS[note];
+  if(!hex) return '#555555';
+  const r = Math.round(parseInt(hex.slice(1,3),16)*0.55);
+  const g = Math.round(parseInt(hex.slice(3,5),16)*0.55);
+  const b = Math.round(parseInt(hex.slice(5,7),16)*0.55);
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+function shippedQty(o, n){
+  const target = o['v'+n] || 0;
+  const raw = o['v'+n+'Shipped'];
+  return (raw !== undefined) ? raw : (o['v'+n+'Done'] ? target : 0);
+}
 function vqtyCell(o, n){
-  const qty = o['v'+n] || 0;
-  if(!qty) return '<span class="vqty empty">-</span>';
-  const done = !!o['v'+n+'Done'];
-  return '<span class="vqty '+(done?'done':'pending')+'" data-id="'+o.id+'" data-field="v'+n+'Done" data-current="'+done+'" title="눌러서 '+(done?'출고대기로 변경':'출고완료로 변경')+'">'+qty+'</span>';
+  const target = o['v'+n] || 0;
+  if(!target) return '<span class="vqty empty">-</span>';
+  const shipped = shippedQty(o, n);
+  let status = 'pending';
+  if(shipped >= target) status = 'done';
+  else if(shipped > 0) status = 'partial';
+  const label = status === 'done' ? target : (shipped + '/' + target);
+  return '<span class="vqty '+status+'" data-id="'+o.id+'" data-field="v'+n+'Shipped" data-target="'+target+'" data-shipped="'+shipped+'" title="눌러서 출고된 수량 입력 (목표 '+target+')">'+label+'</span>';
 }
 
 function renderOrders(){
   const tbody = document.getElementById('orderRows');
   const locFilter = document.getElementById('viewLocation').value;
-  const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : currentOrders;
+  const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : sortByFixedLocation(currentOrders);
   tbody.innerHTML = '';
   if(displayed.length === 0){
     tbody.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 출고 내역이 없습니다.</td></tr>';
   }else{
-    displayed.forEach(o=>{
+    displayed.forEach((o, idx)=>{
       const tr = document.createElement('tr');
+      const prevNote = idx > 0 ? displayed[idx-1].note : undefined;
+      const nextNote = idx < displayed.length-1 ? displayed[idx+1].note : undefined;
+      const groupStart = o.note !== prevNote;
+      const groupEnd = o.note !== nextNote;
+      const bColor = 'var(--line)';
+      let mid = '';
+      if(groupStart) mid += 'border-top:3px solid '+bColor+';';
+      if(groupEnd) mid += 'border-bottom:3px solid '+bColor+';';
+      let first = mid + 'border-left:3px solid '+bColor+';';
+      let last = mid + 'border-right:3px solid '+bColor+';';
+      if(groupStart) first += 'border-top-left-radius:10px;';
+      if(groupEnd) first += 'border-bottom-left-radius:10px;';
+      if(groupStart) last += 'border-top-right-radius:10px;';
+      if(groupEnd) last += 'border-bottom-right-radius:10px;';
+      const midAttr = mid ? ' style="'+mid+'"' : '';
+      const firstAttr = ' style="'+first+'"';
+      const lastAttr = ' style="'+last+'"';
       tr.innerHTML =
-        '<td>'+o.productCode+'</td>'+
-        '<td>'+(o.productName||'-')+'</td>'+
-        '<td><span class="tag '+(o.shipType==='EP1'?'ep1':'mail')+'">'+o.shipType+'</span></td>'+
-        '<td>'+vqtyCell(o,1)+'</td><td>'+vqtyCell(o,2)+'</td><td>'+vqtyCell(o,3)+'</td><td>'+vqtyCell(o,4)+'</td><td>'+vqtyCell(o,5)+'</td>'+
-        '<td>'+o.qty+'</td>'+
-        '<td style="font-family:var(--font-body);">'+(o.note||'-')+'</td>'+
-        '<td><button class="btn-danger" data-id="'+o.id+'">삭제</button></td>';
+        '<td'+firstAttr+'>'+o.productCode+'</td>'+
+        '<td'+midAttr+'>'+(o.productName||'-')+'</td>'+
+        '<td'+midAttr+'><span class="tag '+(o.shipType==='EP1'?'ep1':'mail')+'">'+o.shipType+'</span></td>'+
+        '<td'+midAttr+'>'+vqtyCell(o,1)+'</td><td'+midAttr+'>'+vqtyCell(o,2)+'</td><td'+midAttr+'>'+vqtyCell(o,3)+'</td><td'+midAttr+'>'+vqtyCell(o,4)+'</td><td'+midAttr+'>'+vqtyCell(o,5)+'</td>'+
+        '<td'+midAttr+'>'+o.qty+'</td>'+
+        '<td style="font-family:var(--font-body);'+mid+'">'+(o.note||'-')+'</td>'+
+        '<td'+lastAttr+'><button class="btn-danger" data-id="'+o.id+'">삭제</button></td>';
       tbody.appendChild(tr);
     });
   }
-  tbody.querySelectorAll('.vqty.pending, .vqty.done').forEach(el=>{
+  tbody.querySelectorAll('.vqty.pending, .vqty.partial, .vqty.done').forEach(el=>{
     el.addEventListener('click', async ()=>{
+      if(!document.body.classList.contains('admin-mode')){ toast('관리자 로그인 후 입력할 수 있습니다.', true); return; }
       const id = el.dataset.id, field = el.dataset.field;
-      const current = el.dataset.current === 'true';
-      try{ await db.collection('orders').doc(id).update({ [field]: !current }); }
+      const target = Number(el.dataset.target)||0;
+      const shipped = Number(el.dataset.shipped)||0;
+      const input = prompt('출고된 수량을 입력하세요 (목표수량: '+target+')', shipped);
+      if(input === null) return;
+      let val = Number(input);
+      if(isNaN(val) || val < 0){ toast('올바른 숫자를 입력해주세요.', true); return; }
+      if(val > target) val = target;
+      try{ await db.collection('orders').doc(id).update({ [field]: val }); }
       catch(e){ toast('상태 변경 실패: ' + e.message, true); }
     });
   });
   tbody.querySelectorAll('.btn-danger').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      if(!document.body.classList.contains('admin-mode')){ toast('관리자만 삭제할 수 있습니다.', true); return; }
+      if(!document.body.classList.contains('admin-mode')){ toast('관리자 로그인 후 삭제할 수 있습니다.', true); return; }
       if(!confirm('이 출고 내역을 삭제할까요?')) return;
       try{ await db.collection('orders').doc(btn.dataset.id).delete(); toast('삭제 완료'); }
       catch(e){ toast('삭제 실패: ' + e.message, true); }
@@ -544,7 +642,7 @@ function renderOrders(){
   });
 
   const totQty = displayed.reduce((a,o)=>a+o.qty,0);
-  const completedQty = o => [1,2,3,4,5].reduce((s,n)=> s + ((o['v'+n+'Done']) ? (o['v'+n]||0) : 0), 0);
+  const completedQty = o => [1,2,3,4,5].reduce((s,n)=> s + shippedQty(o,n), 0);
   const totEp1 = displayed.filter(o=>o.shipType==='EP1').reduce((a,o)=>a+completedQty(o),0);
   const totMail = displayed.filter(o=>o.shipType==='메일').reduce((a,o)=>a+completedQty(o),0);
   const ep1Pct = totQty > 0 ? Math.round(totEp1/totQty*100) : 0;
@@ -558,7 +656,7 @@ function renderOrders(){
 
 document.getElementById('exportBtn').addEventListener('click', ()=>{
   const locFilter = document.getElementById('viewLocation').value;
-  const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : currentOrders;
+  const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : sortByFixedLocation(currentOrders);
   if(displayed.length === 0){ toast('내보낼 데이터가 없습니다.', true); return; }
   const header = ['날짜','제품코드','제품명','방식','1호차','2호차','3호차','4호차','추가차량','합계','위치/담당자'];
   const rows = displayed.map(o=>[o.date,o.productCode,o.productName,o.shipType,o.v1,o.v2,o.v3,o.v4,o.v5,o.qty,o.note]);
@@ -571,29 +669,132 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   URL.revokeObjectURL(url);
 });
 
-function setAdminMode(on){
+function setAdminMode(on, empNo){
   document.body.classList.toggle('admin-mode', on);
-  document.getElementById('adminBtn').textContent = on ? '관리자 로그아웃' : '관리자 로그인';
-  if(on) sessionStorage.setItem('isAdmin','1'); else sessionStorage.removeItem('isAdmin');
+  document.getElementById('adminBtn').textContent = on ? ('관리자 로그아웃 ('+empNo+')') : '관리자 로그인';
+  if(on){
+    sessionStorage.setItem('isAdmin','1');
+    sessionStorage.setItem('empNo', empNo);
+    currentEmployeeNo = empNo;
+  }else{
+    sessionStorage.removeItem('isAdmin');
+    sessionStorage.removeItem('empNo');
+    currentEmployeeNo = null;
+  }
 }
 
-document.getElementById('adminBtn').addEventListener('click', ()=>{
+function setMasterMode(on){
+  isMaster = on;
+  document.getElementById('masterBtn').style.display = on ? 'inline-block' : 'none';
+  if(on) sessionStorage.setItem('isMaster','1'); else sessionStorage.removeItem('isMaster');
+  if(!on) document.getElementById('masterPanel').style.display = 'none';
+}
+
+let currentEmployeeNo = null;
+let isMaster = false;
+
+async function isApprovedAdmin(empNo){
+  if(!db) return false;
+  try{
+    const doc = await db.collection('approvedAdmins').doc(empNo).get();
+    return doc.exists && doc.data().approved === true;
+  }catch(e){
+    toast('승인 확인 실패: ' + e.message, true);
+    return false;
+  }
+}
+
+document.getElementById('adminBtn').addEventListener('click', async ()=>{
   if(document.body.classList.contains('admin-mode')){
     setAdminMode(false);
-    toast('관리자 로그아웃 되었습니다.');
+    setMasterMode(false);
+    toast('로그아웃 되었습니다.');
     return;
   }
-  const input = prompt('관리자 번호를 입력하세요');
+  const input = prompt('관리자번호를 입력하세요 (001~100)');
   if(input === null) return;
-  if(input.trim() === ADMIN_PIN){
-    setAdminMode(true);
-    toast('관리자 모드로 전환되었습니다.');
-  }else{
-    toast('번호가 올바르지 않습니다.', true);
+  const trimmed = input.trim();
+
+  if(trimmed === MASTER_PIN){
+    setMasterMode(true);
+    setAdminMode(true, '마스터');
+    toast('마스터관리자로 로그인되었습니다.');
+    return;
   }
+
+  const num = parseInt(trimmed, 10);
+  if(isNaN(num) || num < EMPLOYEE_MIN || num > EMPLOYEE_MAX){
+    toast('001~100 사이의 관리자번호를 입력해주세요.', true);
+    return;
+  }
+  const empNo = String(num).padStart(3,'0');
+  if(!db){ toast('먼저 Firebase 설정을 완료해주세요.', true); return; }
+  const approved = await isApprovedAdmin(empNo);
+  if(!approved){
+    toast(empNo + '번은 마스터관리자의 승인을 받지 못했습니다.', true);
+    return;
+  }
+  setAdminMode(true, empNo);
+  toast(empNo + '번 관리자로 로그인되었습니다.');
 });
 
-try{ if(sessionStorage.getItem('isAdmin') === '1') setAdminMode(true); }catch(e){}
+document.getElementById('masterBtn').addEventListener('click', async ()=>{
+  const panel = document.getElementById('masterPanel');
+  const opening = panel.style.display === 'none';
+  panel.style.display = opening ? 'block' : 'none';
+  if(opening) await renderMasterPanel();
+});
+
+document.getElementById('closeMasterPanel').addEventListener('click', ()=>{
+  document.getElementById('masterPanel').style.display = 'none';
+});
+
+async function renderMasterPanel(){
+  const grid = document.getElementById('masterPanelGrid');
+  grid.innerHTML = '불러오는 중...';
+  let approvedSet = new Set();
+  try{
+    const snap = await db.collection('approvedAdmins').where('approved','==', true).get();
+    snap.forEach(doc=> approvedSet.add(doc.id));
+  }catch(e){
+    toast('승인 목록 불러오기 실패: ' + e.message, true);
+  }
+  grid.innerHTML = '';
+  for(let i=EMPLOYEE_MIN; i<=EMPLOYEE_MAX; i++){
+    const num = String(i).padStart(3,'0');
+    const isApproved = approvedSet.has(num);
+    const label = document.createElement('label');
+    label.className = isApproved ? 'approved' : '';
+    label.innerHTML = '<input type="checkbox" '+(isApproved?'checked':'')+' data-num="'+num+'"> '+num;
+    grid.appendChild(label);
+  }
+  grid.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const num = cb.dataset.num;
+      try{
+        if(cb.checked){
+          await db.collection('approvedAdmins').doc(num).set({ approved: true });
+          cb.closest('label').className = 'approved';
+        }else{
+          await db.collection('approvedAdmins').doc(num).set({ approved: false });
+          cb.closest('label').className = '';
+        }
+      }catch(e){
+        toast('변경 실패: ' + e.message, true);
+        cb.checked = !cb.checked;
+      }
+    });
+  });
+}
+
+try{
+  if(sessionStorage.getItem('isAdmin') === '1'){
+    setAdminMode(true, sessionStorage.getItem('empNo') || '');
+  }
+  if(sessionStorage.getItem('isMaster') === '1'){
+    setMasterMode(true);
+  }
+}catch(e){}
 
 document.getElementById('fDate').value = todayStr();
 document.getElementById('viewDate').value = todayStr();
