@@ -117,6 +117,14 @@
   .tag{ padding:2px 8px; border-radius:20px; font-size:11px; font-family:var(--font-body); font-weight:600;}
   .tag.ep1{ background:rgba(47,191,166,0.15); color:var(--teal); }
   .tag.mail{ background:rgba(240,168,40,0.15); color:var(--amber); }
+  .vqty{ display:inline-block; min-width:26px; text-align:center; padding:3px 9px; border-radius:6px; font-family:var(--font-mono); font-weight:700; cursor:pointer; user-select:none; transition:opacity .1s ease;}
+  .vqty:hover{ opacity:0.8; }
+  .vqty.empty{ color:var(--text-dim); cursor:default; font-weight:400; }
+  .vqty.pending{ background:rgba(224,96,79,0.15); color:var(--red); }
+  .vqty.done{ background:rgba(47,191,166,0.18); color:var(--teal); }
+  .status-legend{ display:flex; gap:14px; align-items:center; font-size:11.5px; color:var(--text-dim); margin-top:10px;}
+  .status-legend .dotlbl{ display:flex; align-items:center; gap:5px; }
+  .status-legend .sw{ width:10px; height:10px; border-radius:3px; display:inline-block; }
   .empty-row td{ text-align:center; color:var(--text-dim); font-family:var(--font-body); padding:30px 10px;}
 
   .totals{
@@ -169,7 +177,7 @@
   <div class="grid">
 
     <div class="panel">
-      <h2>출고 등록</h2>
+      <h2>출고 지시</h2>
 
       <label>날짜</label>
       <input type="date" id="fDate">
@@ -211,7 +219,7 @@
         <b id="qtyLive">0</b>
       </div>
 
-      <button class="btn-primary" id="submitBtn">출고 등록</button>
+      <button class="btn-primary" id="submitBtn">출고 지시</button>
     </div>
 
     <div class="panel">
@@ -226,6 +234,10 @@
         </div>
       </div>
 
+      <div class="status-legend">
+        <span class="dotlbl"><span class="sw" style="background:var(--red);"></span>출고대기 (클릭하면 완료 처리)</span>
+        <span class="dotlbl"><span class="sw" style="background:var(--teal);"></span>출고완료</span>
+      </div>
       <div style="overflow-x:auto;">
         <table>
           <thead>
@@ -395,6 +407,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   const order = {
     date, productCode: code, productName: productsMap[code] || '',
     shipType, v1,v2,v3,v4, qty,
+    v1Done: false, v2Done: false, v3Done: false, v4Done: false,
     ep1Qty: shipType === 'EP1' ? qty : 0,
     mailQty: shipType === '메일' ? qty : 0,
     note: document.getElementById('fNote').value.trim(),
@@ -403,7 +416,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
 
   try{
     await db.collection('orders').add(order);
-    toast('출고 등록 완료');
+    toast('출고 지시 완료');
     document.getElementById('fCode').value = '';
     document.getElementById('fName').textContent = '';
     document.getElementById('fV1').value = '';
@@ -413,7 +426,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     document.getElementById('fNote').value = '';
     updateLiveQty();
   }catch(e){
-    toast('등록 실패: ' + e.message, true);
+    toast('지시 실패: ' + e.message, true);
   }
 });
 
@@ -433,6 +446,13 @@ function listenOrders(){
 
 document.getElementById('viewDate').addEventListener('change', ()=>{ if(db) listenOrders(); });
 
+function vqtyCell(o, n){
+  const qty = o['v'+n] || 0;
+  if(!qty) return '<span class="vqty empty">-</span>';
+  const done = !!o['v'+n+'Done'];
+  return '<span class="vqty '+(done?'done':'pending')+'" data-id="'+o.id+'" data-field="v'+n+'Done" data-current="'+done+'" title="눌러서 '+(done?'출고대기로 변경':'출고완료로 변경')+'">'+qty+'</span>';
+}
+
 function renderOrders(){
   const tbody = document.getElementById('orderRows');
   tbody.innerHTML = '';
@@ -445,13 +465,21 @@ function renderOrders(){
         '<td>'+o.productCode+'</td>'+
         '<td>'+(o.productName||'-')+'</td>'+
         '<td><span class="tag '+(o.shipType==='EP1'?'ep1':'mail')+'">'+o.shipType+'</span></td>'+
-        '<td>'+(o.v1||0)+'</td><td>'+(o.v2||0)+'</td><td>'+(o.v3||0)+'</td><td>'+(o.v4||0)+'</td>'+
+        '<td>'+vqtyCell(o,1)+'</td><td>'+vqtyCell(o,2)+'</td><td>'+vqtyCell(o,3)+'</td><td>'+vqtyCell(o,4)+'</td>'+
         '<td>'+o.qty+'</td>'+
         '<td style="font-family:var(--font-body);">'+(o.note||'-')+'</td>'+
         '<td><button class="btn-danger" data-id="'+o.id+'">삭제</button></td>';
       tbody.appendChild(tr);
     });
   }
+  tbody.querySelectorAll('.vqty.pending, .vqty.done').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const id = el.dataset.id, field = el.dataset.field;
+      const current = el.dataset.current === 'true';
+      try{ await db.collection('orders').doc(id).update({ [field]: !current }); }
+      catch(e){ toast('상태 변경 실패: ' + e.message, true); }
+    });
+  });
   tbody.querySelectorAll('.btn-danger').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!confirm('이 출고 내역을 삭제할까요?')) return;
