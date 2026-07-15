@@ -138,6 +138,10 @@
   }
   tbody td{ padding:11px 10px; border-bottom:1px solid var(--line); font-family:var(--font-mono); }
   tbody tr:hover{ background:rgba(255,255,255,0.02); }
+  .group-th{
+    text-align:left; font-size:12.5px; text-transform:uppercase; letter-spacing:0.6px;
+    color:var(--text-dim); padding:9px 10px; font-weight:600; background:var(--panel-2);
+  }
   .tag{ padding:3px 9px; border-radius:20px; font-size:12.5px; font-family:var(--font-body); font-weight:600;}
   .tag.ep1{ background:rgba(47,191,166,0.15); color:var(--teal); }
   .tag.mail{ background:rgba(240,168,40,0.15); color:var(--amber); }
@@ -588,20 +592,35 @@ function renderOrders(){
     tbody.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 출고 내역이 없습니다.</td></tr>';
   }else{
     displayed.forEach((o, idx)=>{
-      const tr = document.createElement('tr');
       const prevNote = idx > 0 ? displayed[idx-1].note : undefined;
       const nextNote = idx < displayed.length-1 ? displayed[idx+1].note : undefined;
       const groupStart = o.note !== prevNote;
       const groupEnd = o.note !== nextNote;
       const bColor = 'var(--line)';
+
+      if(groupStart){
+        const headerTr = document.createElement('tr');
+        headerTr.innerHTML =
+          '<th class="group-th" style="border-top:3px solid '+bColor+';border-left:3px solid '+bColor+';border-top-left-radius:10px;">코드</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">제품명</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">방식</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">1호차</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">2호차</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">3호차</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">4호차</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">추가차량</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">합계</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';">위치/담당자</th>'+
+          '<th class="group-th" style="border-top:3px solid '+bColor+';border-right:3px solid '+bColor+';border-top-right-radius:10px;"></th>';
+        tbody.appendChild(headerTr);
+      }
+
+      const tr = document.createElement('tr');
       let mid = '';
-      if(groupStart) mid += 'border-top:3px solid '+bColor+';';
       if(groupEnd) mid += 'border-bottom:3px solid '+bColor+';';
       let first = mid + 'border-left:3px solid '+bColor+';';
       let last = mid + 'border-right:3px solid '+bColor+';';
-      if(groupStart) first += 'border-top-left-radius:10px;';
       if(groupEnd) first += 'border-bottom-left-radius:10px;';
-      if(groupStart) last += 'border-top-right-radius:10px;';
       if(groupEnd) last += 'border-bottom-right-radius:10px;';
       const midAttr = mid ? ' style="'+mid+'"' : '';
       const firstAttr = ' style="'+first+'"';
