@@ -75,6 +75,7 @@
   body:not(.master-mode) .grid{ grid-template-columns: 1fr; }
   body:not(.master-mode) .btn-danger{ display:none; }
   body:not(.master-mode) #reportPanel{ display:none; }
+  body:not(.master-mode) #reportTotalsTop{ display:none; }
   body:not(.admin-mode) .vqty.pending, body:not(.admin-mode) .vqty.partial, body:not(.admin-mode) .vqty.done{ cursor:default; }
   body:not(.admin-mode) .vqty.pending:hover, body:not(.admin-mode) .vqty.partial:hover, body:not(.admin-mode) .vqty.done:hover{ opacity:1; }
   .master-panel{
@@ -151,6 +152,11 @@
     text-align:left; font-size:12.5px; text-transform:uppercase; letter-spacing:0.6px;
     color:var(--text-dim); padding:9px 10px; font-weight:600; background:var(--panel-2);
   }
+  .cat-row{ cursor:pointer; transition:background .1s ease; }
+  .group-toggle-row td:hover{ opacity:0.85; }
+  .cat-row:hover{ background:rgba(255,255,255,0.05); }
+  .cat-row.active{ background:rgba(240,168,40,0.15); }
+  .cat-row.active td:first-child{ color:var(--amber); font-weight:700; }
   .tag{ padding:3px 9px; border-radius:20px; font-size:12.5px; font-family:var(--font-body); font-weight:600;}
   .tag.ep1{ background:rgba(47,191,166,0.15); color:var(--teal); }
   .tag.mail{ background:rgba(240,168,40,0.15); color:var(--amber); }
@@ -232,6 +238,7 @@
 
   <div class="grid">
 
+    <div style="display:flex; flex-direction:column; gap:20px;">
     <div class="panel" id="formPanel">
       <h2>출고 지시</h2>
 
@@ -239,15 +246,13 @@
       <input type="date" id="fDate">
 
       <label>제품코드</label>
-      <input type="text" id="fCode" list="productList" placeholder="예: 3300" autocomplete="off">
-      <datalist id="productList"></datalist>
-      <div class="product-name" id="fName"></div>
+      <input type="text" id="fCode" list="codeList" placeholder="예: 3300" autocomplete="off">
+      <datalist id="codeList"></datalist>
 
-      <label>출고방식</label>
-      <select id="fShipType">
-        <option value="EP1">EP1</option>
-        <option value="메일">메일</option>
-      </select>
+      <label>제품명</label>
+      <input type="text" id="fProductName" list="nameList" placeholder="예: 4315(검정)" autocomplete="off">
+      <datalist id="nameList"></datalist>
+      <div class="product-name" id="fName"></div>
 
       <label>호차별 수량</label>
       <div class="row4">
@@ -281,8 +286,24 @@
       <button class="btn-primary" id="submitBtn">출고 지시</button>
     </div>
 
+    <div class="panel" id="reportPanel">
+      <h2>매출현황</h2>
+      <div class="hint" style="margin-bottom:14px;">"출고 현황"의 조회 날짜 기준(신청수량 × 단가)으로 계산돼요. 구분을 클릭하면 출고 현황 목록이 해당 구분만 필터링돼요 (다시 클릭하면 해제).</div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>구분</th><th>출고금액</th></tr></thead>
+          <tbody id="reportGroupRows"><tr class="empty-row"><td colspan="2">데이터 없음</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+
     <div class="panel">
       <h2>출고 현황</h2>
+      <div class="totals" id="reportTotalsTop" style="grid-template-columns:repeat(2,1fr); margin-top:0; margin-bottom:18px;">
+        <div class="box teal" style="padding:18px 20px;"><div class="lbl">일일 총출고금액</div><div class="val" id="reportDailyTotal" style="font-size:24px;">0</div></div>
+        <div class="box amber" style="padding:18px 20px;"><div class="lbl">누적출고금액</div><div class="val" id="reportCumulativeTotal" style="font-size:24px;">0</div></div>
+      </div>
       <div class="filter-bar">
         <div>
           <label>조회 날짜</label>
@@ -318,40 +339,25 @@
         <table>
           <thead>
             <tr>
-              <th>코드</th><th>제품명</th><th>방식</th>
+              <th>코드</th><th>제품명</th>
               <th>1호차</th><th>2호차</th><th>3호차</th><th>4호차</th><th>추가차량</th>
               <th>합계</th><th>위치/담당자</th><th></th>
             </tr>
           </thead>
           <tbody id="orderRows">
-            <tr class="empty-row"><td colspan="11">해당 날짜의 출고 내역이 없습니다.</td></tr>
+            <tr class="empty-row"><td colspan="10">해당 날짜의 출고 내역이 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
 
-      <div class="totals">
+      <div class="totals" style="grid-template-columns:repeat(2,1fr);">
         <div class="box"><div class="lbl">전체 신청수량</div><div class="val" id="totQty">0</div></div>
-        <div class="box teal"><div class="lbl">EP1 출고완료</div><div class="val" id="totEp1Pct">0%</div><div class="pct" id="totEp1">0건</div></div>
-        <div class="box amber"><div class="lbl">메일 출고완료</div><div class="val" id="totMailPct">0%</div><div class="pct" id="totMail">0건</div></div>
+        <div class="box teal"><div class="lbl">출고완료율</div><div class="val" id="totDonePct">0%</div><div class="pct" id="totDoneQty">0</div></div>
       </div>
     </div>
 
   </div>
 
-  <div class="panel" id="reportPanel" style="margin-top:20px;">
-    <h2>일일 업무 보고서</h2>
-    <div class="hint" style="margin-bottom:14px;">"출고 현황"의 조회 날짜 기준(신청수량 × 단가)으로 계산돼요.</div>
-    <div style="overflow-x:auto;">
-      <table>
-        <thead><tr><th>그룹</th><th>출고금액</th></tr></thead>
-        <tbody id="reportGroupRows"><tr class="empty-row"><td colspan="2">데이터 없음</td></tr></tbody>
-      </table>
-    </div>
-    <div class="totals" style="grid-template-columns:repeat(2,1fr);">
-      <div class="box teal"><div class="lbl">일일 총출고금액</div><div class="val" id="reportDailyTotal">0</div></div>
-      <div class="box amber"><div class="lbl">누적출고금액</div><div class="val" id="reportCumulativeTotal">0</div></div>
-    </div>
-  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -383,10 +389,11 @@ const MASTER_PIN = "34361";
 const PRODUCTS_SEED = [{"code": "7813", "name": "001"}, {"code": "7678", "name": "008"}, {"code": "7694", "name": "009"}, {"code": "1124", "name": "241"}, {"code": "0947", "name": "011"}, {"code": "6650", "name": "011.2"}, {"code": "7724", "name": "013"}, {"code": "5470", "name": "013.1"}, {"code": "7732", "name": "014"}, {"code": "7122", "name": "014.1"}, {"code": "68160", "name": "307"}, {"code": "7791", "name": "123"}, {"code": "7767", "name": "016"}, {"code": "2531", "name": "016.1"}, {"code": "7775", "name": "105"}, {"code": "7783", "name": "115"}, {"code": "2202", "name": "115.1"}, {"code": "5852", "name": "233.3"}, {"code": "4834", "name": "245"}, {"code": "2245", "name": "149"}, {"code": "3298", "name": "191"}, {"code": "4006", "name": "192"}, {"code": "7716", "name": "012"}, {"code": "7759", "name": "015.1"}, {"code": "7740", "name": "015"}, {"code": "7084", "name": "151"}, {"code": "68160", "name": "307"}, {"code": "8151", "name": "048"}, {"code": "8186", "name": "052"}, {"code": "8194", "name": "053"}, {"code": "8208", "name": "054"}, {"code": "8216", "name": "058"}, {"code": "8232", "name": "097"}, {"code": "6793", "name": "209"}, {"code": "8356", "name": "137"}, {"code": "8160", "name": "049"}, {"code": "092668160", "name": "307"}, {"code": "5613", "name": "051"}, {"code": "8305", "name": "122"}, {"code": "9077", "name": "230.1"}, {"code": "4054", "name": "236"}, {"code": "8313", "name": "133"}, {"code": "8321", "name": "134"}, {"code": "8330", "name": "135"}, {"code": "5621", "name": "210"}, {"code": "5630", "name": "211.1"}, {"code": "3015", "name": "146"}, {"code": "0099", "name": "311"}, {"code": "8348", "name": "136"}, {"code": "8364", "name": "138"}, {"code": "7186", "name": "002"}, {"code": "9436", "name": "002.1"}, {"code": "3204", "name": "299"}, {"code": "8593", "name": "046"}, {"code": "5893", "name": "047"}, {"code": "5907", "name": "179"}, {"code": "4949", "name": "181"}, {"code": "5915", "name": "182"}, {"code": "5923", "name": "183"}, {"code": "9024", "name": "303"}, {"code": "8615", "name": "076"}, {"code": "8658", "name": "116"}, {"code": "8660", "name": "306"}, {"code": "8682", "name": ""}, {"code": "8690", "name": ""}, {"code": "8704", "name": ""}, {"code": "8712", "name": ""}, {"code": "8720", "name": ""}, {"code": "8739", "name": ""}, {"code": "7872", "name": ""}, {"code": "8747", "name": "079"}, {"code": "8755", "name": ""}, {"code": "8771", "name": ""}, {"code": "8780", "name": ""}, {"code": "8798", "name": ""}, {"code": "8801", "name": ""}, {"code": "9256", "name": ""}, {"code": "1560", "name": "112.2"}, {"code": "8753", "name": "304"}, {"code": "0480", "name": ""}, {"code": "1850", "name": "302"}, {"code": "7864", "name": ""}, {"code": "0853", "name": ""}, {"code": "8361", "name": ""}, {"code": "8240", "name": "100"}, {"code": "3023", "name": "147"}, {"code": "8020", "name": "082"}, {"code": "3955", "name": "085"}, {"code": "8100", "name": "125"}, {"code": "8119", "name": "126"}, {"code": "8127", "name": "127"}, {"code": "8143", "name": "130"}, {"code": "2990", "name": ""}, {"code": "3007", "name": ""}, {"code": "4102", "name": ""}, {"code": "7902", "name": ""}, {"code": "7910", "name": "021"}, {"code": "7929", "name": "022"}, {"code": "7937", "name": "023"}, {"code": "7945", "name": "024"}, {"code": "7953", "name": ""}, {"code": "7961", "name": ""}, {"code": "7970", "name": "027"}, {"code": "8003", "name": "077"}, {"code": "8011", "name": "081"}, {"code": "8038", "name": "083"}, {"code": "8046", "name": "084"}, {"code": "8062", "name": "099"}, {"code": "8070", "name": "102"}, {"code": "8135", "name": "129"}, {"code": "8097", "name": "104"}, {"code": "4145", "name": "164"}, {"code": "4161", "name": "174"}, {"code": "4188", "name": "178"}, {"code": "4382", "name": "184"}, {"code": "4390", "name": "198"}, {"code": "4404", "name": "199"}, {"code": "4374", "name": "189"}, {"code": "0400", "name": "189.1"}, {"code": "4412", "name": "200"}, {"code": "4439", "name": "202"}, {"code": "4447", "name": "203"}, {"code": "4455", "name": "204"}, {"code": "4560", "name": "212"}, {"code": "4579", "name": "213"}, {"code": "4587", "name": "214"}, {"code": "4595", "name": "215"}, {"code": "4609", "name": "216"}, {"code": "4617", "name": "217"}, {"code": "4625", "name": "218"}, {"code": "4552", "name": "219"}, {"code": "4641", "name": "220"}, {"code": "7006", "name": "221"}, {"code": "9519", "name": "213.1"}, {"code": "9527", "name": "214.1"}, {"code": "0070", "name": "216.1"}, {"code": "0142", "name": "217.1"}, {"code": "0614", "name": "218.1"}, {"code": "7319", "name": "221.1"}, {"code": "0630", "name": "198.1"}, {"code": "1247", "name": "223"}, {"code": "8372", "name": "055"}, {"code": "8380", "name": "056"}, {"code": "8399", "name": "057"}, {"code": "8402", "name": "101"}, {"code": "8136", "name": "144"}, {"code": "0873", "name": "142"}, {"code": "4483", "name": "4315(파랑)"}, {"code": "3716", "name": "150"}, {"code": "5214", "name": "038.1"}, {"code": "6874", "name": "308"}, {"code": "4650", "name": "4315(회색)"}, {"code": "0008", "name": "PEU"}, {"code": "8432", "name": "310"}, {"code": "8753", "name": "304"}, {"code": "8537", "name": "199.1"}, {"code": "9879", "name": "227"}, {"code": "9186", "name": "313"}, {"code": "1150", "name": "229"}, {"code": "4910", "name": "312"}, {"code": "6500", "name": "315"}, {"code": "1527", "name": "314"}, {"code": "9157", "name": "226"}, {"code": "8537", "name": "199.1"}, {"code": "4761", "name": "225"}, {"code": "3806", "name": "224"}, {"code": "2888", "name": "314.1"}, {"code": "6297", "name": "321"}, {"code": "6742", "name": "431"}, {"code": "8768", "name": "008.1"}, {"code": "4604", "name": "038.2"}, {"code": "0007", "name": "DIF"}, {"code": "8766", "name": "002.2"}, {"code": "3215", "name": "014.4"}, {"code": "4315", "name": "014.3"}, {"code": "6320", "name": "309"}, {"code": "8890", "name": "011.4"}, {"code": "5369", "name": "231"}, {"code": "5164", "name": "158.1"}, {"code": "5062", "name": "318"}, {"code": "0100", "name": "319"}, {"code": "7443", "name": "221.2"}, {"code": "6174", "name": "316"}, {"code": "6709", "name": "320"}, {"code": "0260", "name": "115.2"}, {"code": "0174", "name": "316"}, {"code": "8107", "name": "049.1"}, {"code": "6346", "name": "115.2"}, {"code": "7202", "name": "233.2"}, {"code": "85470", "name": "432"}, {"code": "9183", "name": "148"}, {"code": "85470", "name": "432"}, {"code": "5561", "name": "234.2"}, {"code": "9183", "name": "148"}, {"code": "8275", "name": "119"}, {"code": "8283", "name": "120"}, {"code": "8267", "name": "118"}, {"code": "4205", "name": "038.3"}, {"code": "7531", "name": "322"}, {"code": "08521", "name": "321"}, {"code": "2607", "name": "156.1"}, {"code": "5448", "name": "162.1"}, {"code": "8809", "name": "226.1"}, {"code": "2069", "name": "320.1"}, {"code": "0865", "name": "141"}, {"code": "7190", "name": "221.3"}, {"code": "7549", "name": "011.5"}, {"code": "7522", "name": "012.1"}, {"code": "7271", "name": "013.2"}, {"code": "7263", "name": "013.3"}, {"code": "7247", "name": "014.4"}, {"code": "7239", "name": "014.5"}, {"code": "7212", "name": "015.2"}, {"code": "7107", "name": "105.1"}, {"code": "6569", "name": "149.1"}, {"code": "4706", "name": "6428"}, {"code": "7112", "name": "299.2"}, {"code": "6060", "name": "4328(회색)"}, {"code": "3627", "name": "SLH포장박스"}, {"code": "2636", "name": "SLH방청유지"}, {"code": "3061", "name": "235"}, {"code": "0001", "name": "NPC회색"}, {"code": "0002", "name": "NPC보라"}, {"code": "2409", "name": "150"}, {"code": "0003", "name": "lid"}, {"code": "0004", "name": "sleeve"}, {"code": "0005", "name": "pallet"}, {"code": "0006", "name": "blister"}, {"code": "1001", "name": "cap1"}, {"code": "1002", "name": "cap2"}, {"code": "1003", "name": "cap3"}, {"code": "1004", "name": "cap4"}, {"code": "1005", "name": "cap5"}, {"code": "1006", "name": "cap6"}, {"code": "1007", "name": "cap7"}, {"code": "1008", "name": "cap8"}, {"code": "1009", "name": "cap9"}, {"code": "1010", "name": "cap10"}, {"code": "1011", "name": "cap11"}, {"code": "8581", "name": "324"}, {"code": "0883", "name": "325"}, {"code": "0881", "name": "326"}, {"code": "7924", "name": "328"}, {"code": "2850", "name": "244"}, {"code": "2869", "name": "243"}, {"code": "3300", "name": "4315(검정)"}, {"code": "2997", "name": "3215(검정)"}, {"code": "6320", "name": "4328(검정)"}, {"code": "4483", "name": "4315(보라)"}, {"code": "3317", "name": "6429"}, {"code": "4471", "name": "3215(회색)"}];
 
 /* 일일업무보고 시트에서 추출한 품번별 그룹/단가 (신청수량 기준 출고금액 계산용) */
-const PRICE_MAP = {"001":{"group":"A","price":83.54},"008":{"group":"B","price":480.81},"008.1":{"group":"B","price":480.81},"009":{"group":"B","price":480.81},"011":{"group":"D","price":389.01},"011.2":{"group":"D","price":389.01},"011.4":{"group":"D","price":389.01},"011.5":{"group":"D","price":389.01},"012":{"group":"D","price":389.01},"012.1":{"group":"D","price":389.01},"013":{"group":"B","price":480.81},"013.1":{"group":"B","price":480.81},"013.2":{"group":"B","price":480.81},"013.3":{"group":"B","price":480.81},"014":{"group":"B","price":480.81},"014.1":{"group":"B","price":480.81},"4315(파랑)":{"group":"B","price":480.81},"4315(검정)":{"group":"B","price":480.81},"014.4":{"group":"B","price":480.81},"014.5":{"group":"B","price":480.81},"015":{"group":"B","price":480.81},"015.1":{"group":"B","price":480.81},"015.2":{"group":"B","price":480.81},"016":{"group":"D","price":389.01},"016.1":{"group":"D","price":389.01},"105":{"group":"D","price":389.01},"105.1":{"group":"D","price":389.01},"115":{"group":"M","price":427.74},"115.1":{"group":"B","price":480.81},"115.2":{"group":"M","price":427.74},"6429":{"group":"A","price":522.12},"124":{"group":"A","price":83.54},"149":{"group":"D","price":389.01},"321":{"group":"D","price":62.24},"431":{"group":"B","price":76.93},"432":{"group":"B","price":76.93},"NPC회색":{"group":"D","price":62.24},"048":{"group":"I","price":58.52},"049":{"group":"I","price":58.52},"049.1":{"group":"I","price":58.52},"051":{"group":"I","price":58.52},"052":{"group":"I","price":58.52},"053":{"group":"I","price":58.52},"054":{"group":"I","price":58.52},"058":{"group":"I","price":58.52},"097":{"group":"I","price":58.52},"100":{"group":"I","price":58.52},"118":{"group":"I","price":58.52},"119":{"group":"I","price":9.36},"120":{"group":"I","price":58.52},"121":{"group":"I","price":58.52},"122":{"group":"I","price":58.52},"133":{"group":"I","price":9.36},"134":{"group":"I","price":58.52},"135":{"group":"I","price":9.36},"137":{"group":"I","price":58.52},"138":{"group":"I","price":9.36},"146":{"group":"I","price":58.52},"156.1":{"group":"I","price":9.36},"211.1":{"group":"I","price":58.52},"309":{"group":"I","price":9.36},"312":{"group":"I","price":9.36},"318":{"group":"I","price":9.36},"320":{"group":"I","price":58.52},"320.1":{"group":"I","price":58.52},"023":{"group":"H","price":182.46},"024":{"group":"H","price":182.46},"027":{"group":"H","price":29.19},"077":{"group":"G","price":341.96},"081":{"group":"H","price":29.19},"084":{"group":"H","price":29.19},"102":{"group":"H","price":29.19},"104":{"group":"G","price":366.06},"125":{"group":"H","price":29.19},"126":{"group":"H","price":29.19},"127":{"group":"H","price":29.19},"129":{"group":"K","price":341.96},"130":{"group":"H","price":182.46},"147":{"group":"H","price":29.19},"148":{"group":"H","price":29.19},"150":{"group":"H","price":182.46},"158.1":{"group":"H","price":182.46},"162.1":{"group":"H","price":182.46},"164":{"group":"G","price":366.06},"174":{"group":"H","price":182.46},"176.1":{"group":"H","price":29.19},"176.2":{"group":"H","price":29.19},"178":{"group":"H","price":182.46},"184":{"group":"G","price":366.06},"189":{"group":"H","price":29.19},"189.1":{"group":"H","price":182.46},"198.1":{"group":"H","price":29.19},"199.1":{"group":"H","price":29.19},"200":{"group":"H","price":182.46},"200.1":{"group":"H","price":182.46},"202":{"group":"H","price":29.19},"203":{"group":"H","price":29.19},"204":{"group":"H","price":29.19},"212":{"group":"H","price":182.46},"213":{"group":"H","price":182.46},"213.1":{"group":"H","price":29.19},"214":{"group":"H","price":182.46},"214.1":{"group":"H","price":29.19},"215":{"group":"H","price":182.46},"216":{"group":"H","price":182.46},"216.1":{"group":"H","price":29.19},"217":{"group":"H","price":182.46},"217.1":{"group":"H","price":29.19},"218":{"group":"H","price":182.46},"218.1":{"group":"H","price":29.19},"219":{"group":"H","price":182.46},"220":{"group":"H","price":182.46},"221":{"group":"H","price":182.46},"221.2":{"group":"H","price":29.19},"221.3":{"group":"H","price":182.46},"223":{"group":"H","price":29.19},"225":{"group":"K","price":341.96},"226":{"group":"H","price":29.19},"226.1":{"group":"H","price":182.46},"227":{"group":"H","price":29.19},"229":{"group":"H","price":29.19},"231":{"group":"H","price":182.46},"233.2":{"group":"K","price":341.96},"233.3":{"group":"K","price":341.96},"234.2":{"group":"H","price":182.46},"235":{"group":"H","price":29.19},"236":{"group":"H","price":29.19},"237":{"group":"H","price":29.19},"238":{"group":"H","price":29.19},"239":{"group":"H","price":29.19},"240":{"group":"H","price":29.19},"241":{"group":"H","price":29.19},"242":{"group":"H","price":29.19},"243":{"group":"H","price":29.19},"055":{"group":"J","price":6.89},"056":{"group":"J","price":6.89},"057":{"group":"J","price":6.89},"101":{"group":"J","price":6.89},"141":{"group":"J","price":6.89},"142":{"group":"J","price":6.89},"144":{"group":"J","price":6.89},"볼세척품":{"group":"L","price":1.0},"cap1":{"group":"N1","price":25.0},"cap2":{"group":"N1","price":25.0},"cap3":{"group":"N1","price":25.0},"cap4":{"group":"N1","price":25.0},"cap5":{"group":"N2","price":70.0},"cap6":{"group":"N2","price":70.0},"DIF":{"group":"T","price":1113.5},"PEU":{"group":"S","price":496.9},"lid":{"group":"O","price":483.0},"pallet":{"group":"P","price":495.0},"blister":{"group":"Q","price":1080.0},"sleeve":{"group":"R","price":482.0},"GS네트웍스":{"group":"os","price":500.0},"포스코A":{"group":"os","price":2700.0},"포스코B":{"group":"os","price":3440.0},"포스코C":{"group":"os","price":1700.0},"유신정밀":{"group":"os","price":1000.0},"다원식품":{"group":"os","price":700.0},"YK테크":{"group":"os","price":600.0},"만도브로제":{"group":"os","price":840.0},"엠넥스":{"group":"os","price":650.0},"아센텍":{"group":"os","price":1000.0},"현대기업":{"group":"os","price":900.0},"박스1600":{"group":"os","price":1600.0},"박스1700":{"group":"os","price":1700.0},"박스1800":{"group":"os","price":1800.0},"박스1900":{"group":"os","price":1900.0},"트레이200":{"group":"os","price":483.0}};
+const PRICE_MAP = {"001":{"group":"A","price":83.54,"category":"BOX"},"008":{"group":"B","price":480.81,"category":"BOX"},"008.1":{"group":"B","price":480.81,"category":"BOX"},"009":{"group":"B","price":480.81,"category":"BOX"},"011":{"group":"D","price":389.01,"category":"BOX"},"011.2":{"group":"D","price":389.01,"category":"BOX"},"011.4":{"group":"D","price":389.01,"category":"BOX"},"011.5":{"group":"D","price":389.01,"category":"BOX"},"012":{"group":"D","price":389.01,"category":"BOX"},"012.1":{"group":"D","price":389.01,"category":"BOX"},"013":{"group":"B","price":480.81,"category":"BOX"},"013.1":{"group":"B","price":480.81,"category":"BOX"},"013.2":{"group":"B","price":480.81,"category":"BOX"},"013.3":{"group":"B","price":480.81,"category":"BOX"},"014":{"group":"B","price":480.81,"category":"BOX"},"014.1":{"group":"B","price":480.81,"category":"BOX"},"4315(파랑)":{"group":"B","price":480.81,"category":"BOX"},"4315(검정)":{"group":"B","price":480.81,"category":"BOX"},"014.4":{"group":"B","price":480.81,"category":"BOX"},"014.5":{"group":"B","price":480.81,"category":"BOX"},"015":{"group":"B","price":480.81,"category":"BOX"},"015.1":{"group":"B","price":480.81,"category":"BOX"},"015.2":{"group":"B","price":480.81,"category":"BOX"},"016":{"group":"D","price":389.01,"category":"BOX"},"016.1":{"group":"D","price":389.01,"category":"BOX"},"105":{"group":"D","price":389.01,"category":"BOX"},"105.1":{"group":"D","price":389.01,"category":"BOX"},"115":{"group":"M","price":427.74,"category":"BOX"},"115.1":{"group":"B","price":480.81,"category":"BOX"},"115.2":{"group":"M","price":427.74,"category":"BOX"},"6429":{"group":"A","price":522.12,"category":"BOX"},"124":{"group":"A","price":83.54,"category":"BOX"},"149":{"group":"D","price":389.01,"category":"BOX"},"321":{"group":"D","price":62.24,"category":"BOX"},"431":{"group":"B","price":76.93,"category":"BOX"},"432":{"group":"B","price":76.93,"category":"BOX"},"NPC회색":{"group":"D","price":62.24,"category":"BOX"},"048":{"group":"I","price":58.52,"category":"단프라"},"049":{"group":"I","price":58.52,"category":"단프라"},"049.1":{"group":"I","price":58.52,"category":"단프라"},"051":{"group":"I","price":58.52,"category":"단프라"},"052":{"group":"I","price":58.52,"category":"단프라"},"053":{"group":"I","price":58.52,"category":"단프라"},"054":{"group":"I","price":58.52,"category":"단프라"},"058":{"group":"I","price":58.52,"category":"단프라"},"097":{"group":"I","price":58.52,"category":"단프라"},"100":{"group":"I","price":58.52,"category":"단프라"},"118":{"group":"I","price":58.52,"category":"단프라"},"119":{"group":"I","price":9.36,"category":"단프라"},"120":{"group":"I","price":58.52,"category":"단프라"},"121":{"group":"I","price":58.52,"category":"단프라"},"122":{"group":"I","price":58.52,"category":"단프라"},"133":{"group":"I","price":9.36,"category":"단프라"},"134":{"group":"I","price":58.52,"category":"단프라"},"135":{"group":"I","price":9.36,"category":"단프라"},"137":{"group":"I","price":58.52,"category":"단프라"},"138":{"group":"I","price":9.36,"category":"단프라"},"146":{"group":"I","price":58.52,"category":"단프라"},"156.1":{"group":"I","price":9.36,"category":"단프라"},"211.1":{"group":"I","price":58.52,"category":"단프라"},"309":{"group":"I","price":9.36,"category":"단프라"},"312":{"group":"I","price":9.36,"category":"단프라"},"318":{"group":"I","price":9.36,"category":"단프라"},"320":{"group":"I","price":58.52,"category":"단프라"},"320.1":{"group":"I","price":58.52,"category":"단프라"},"023":{"group":"H","price":182.46,"category":"Tray"},"024":{"group":"H","price":182.46,"category":"Tray"},"027":{"group":"H","price":29.19,"category":"Tray"},"077":{"group":"G","price":341.96,"category":"Tray"},"081":{"group":"H","price":29.19,"category":"Tray"},"084":{"group":"H","price":29.19,"category":"Tray"},"102":{"group":"H","price":29.19,"category":"Tray"},"104":{"group":"G","price":366.06,"category":"Tray"},"125":{"group":"H","price":29.19,"category":"Tray"},"126":{"group":"H","price":29.19,"category":"Tray"},"127":{"group":"H","price":29.19,"category":"Tray"},"129":{"group":"K","price":341.96,"category":"Tray"},"130":{"group":"H","price":182.46,"category":"Tray"},"147":{"group":"H","price":29.19,"category":"Tray"},"148":{"group":"H","price":29.19,"category":"Tray"},"150":{"group":"H","price":182.46,"category":"Tray"},"158.1":{"group":"H","price":182.46,"category":"Tray"},"162.1":{"group":"H","price":182.46,"category":"Tray"},"164":{"group":"G","price":366.06,"category":"Tray"},"174":{"group":"H","price":182.46,"category":"Tray"},"176.1":{"group":"H","price":29.19,"category":"Tray"},"176.2":{"group":"H","price":29.19,"category":"Tray"},"178":{"group":"H","price":182.46,"category":"Tray"},"184":{"group":"G","price":366.06,"category":"Tray"},"189":{"group":"H","price":29.19,"category":"Tray"},"189.1":{"group":"H","price":182.46,"category":"Tray"},"198.1":{"group":"H","price":29.19,"category":"Tray"},"199.1":{"group":"H","price":29.19,"category":"Tray"},"200":{"group":"H","price":182.46,"category":"Tray"},"200.1":{"group":"H","price":182.46,"category":"Tray"},"202":{"group":"H","price":29.19,"category":"Tray"},"203":{"group":"H","price":29.19,"category":"Tray"},"204":{"group":"H","price":29.19,"category":"Tray"},"212":{"group":"H","price":182.46,"category":"Tray"},"213":{"group":"H","price":182.46,"category":"Tray"},"213.1":{"group":"H","price":29.19,"category":"Tray"},"214":{"group":"H","price":182.46,"category":"Tray"},"214.1":{"group":"H","price":29.19,"category":"Tray"},"215":{"group":"H","price":182.46,"category":"Tray"},"216":{"group":"H","price":182.46,"category":"Tray"},"216.1":{"group":"H","price":29.19,"category":"Tray"},"217":{"group":"H","price":182.46,"category":"Tray"},"217.1":{"group":"H","price":29.19,"category":"Tray"},"218":{"group":"H","price":182.46,"category":"Tray"},"218.1":{"group":"H","price":29.19,"category":"Tray"},"219":{"group":"H","price":182.46,"category":"Tray"},"220":{"group":"H","price":182.46,"category":"Tray"},"221":{"group":"H","price":182.46,"category":"Tray"},"221.2":{"group":"H","price":29.19,"category":"Tray"},"221.3":{"group":"H","price":182.46,"category":"Tray"},"223":{"group":"H","price":29.19,"category":"Tray"},"225":{"group":"K","price":341.96,"category":"Tray"},"226":{"group":"H","price":29.19,"category":"Tray"},"226.1":{"group":"H","price":182.46,"category":"Tray"},"227":{"group":"H","price":29.19,"category":"Tray"},"229":{"group":"H","price":29.19,"category":"Tray"},"231":{"group":"H","price":182.46,"category":"Tray"},"233.2":{"group":"K","price":341.96,"category":"Tray"},"233.3":{"group":"K","price":341.96,"category":"Tray"},"234.2":{"group":"H","price":182.46,"category":"Tray"},"235":{"group":"H","price":29.19,"category":"Tray"},"236":{"group":"H","price":29.19,"category":"Tray"},"237":{"group":"H","price":29.19,"category":"Tray"},"238":{"group":"H","price":29.19,"category":"Tray"},"239":{"group":"H","price":29.19,"category":"Tray"},"240":{"group":"H","price":29.19,"category":"Tray"},"241":{"group":"H","price":29.19,"category":"Tray"},"242":{"group":"H","price":29.19,"category":"Tray"},"243":{"group":"H","price":29.19,"category":"Tray"},"055":{"group":"J","price":6.89,"category":"평판"},"056":{"group":"J","price":6.89,"category":"평판"},"057":{"group":"J","price":6.89,"category":"평판"},"101":{"group":"J","price":6.89,"category":"평판"},"141":{"group":"J","price":6.89,"category":"평판"},"142":{"group":"J","price":6.89,"category":"평판"},"144":{"group":"J","price":6.89,"category":"평판"},"볼세척품":{"group":"L","price":1.0,"category":"Plug"},"cap1":{"group":"N1","price":25.0,"category":"기어박스"},"cap2":{"group":"N1","price":25.0,"category":"기어박스"},"cap3":{"group":"N1","price":25.0,"category":"기어박스"},"cap4":{"group":"N1","price":25.0,"category":"기어박스"},"cap5":{"group":"N2","price":70.0,"category":"기어박스"},"cap6":{"group":"N2","price":70.0,"category":"기어박스"},"DIF":{"group":"T","price":1113.5,"category":"기어박스"},"PEU":{"group":"S","price":496.9,"category":"기어박스"},"lid":{"group":"O","price":483.0,"category":"기어박스"},"pallet":{"group":"P","price":495.0,"category":"기어박스"},"blister":{"group":"Q","price":1080.0,"category":"기어박스"},"sleeve":{"group":"R","price":482.0,"category":"기어박스"},"GS네트웍스":{"group":"os","price":500.0,"category":"외주박스"},"포스코A":{"group":"os","price":2700.0,"category":"외주박스"},"포스코B":{"group":"os","price":3440.0,"category":"외주박스"},"포스코C":{"group":"os","price":1700.0,"category":"외주박스"},"유신정밀":{"group":"os","price":1000.0,"category":"외주박스"},"다원식품":{"group":"os","price":700.0,"category":"외주박스"},"YK테크":{"group":"os","price":600.0,"category":"외주박스"},"만도브로제":{"group":"os","price":840.0,"category":"외주박스"},"엠넥스":{"group":"os","price":650.0,"category":"외주박스"},"아센텍":{"group":"os","price":1000.0,"category":"외주박스"},"현대기업":{"group":"os","price":900.0,"category":"외주박스"},"박스1600":{"group":"os","price":1600.0,"category":"외주박스"},"박스1700":{"group":"os","price":1700.0,"category":"외주박스"},"박스1800":{"group":"os","price":1800.0,"category":"외주박스"},"박스1900":{"group":"os","price":1900.0,"category":"외주박스"},"트레이200":{"group":"os","price":483.0,"category":"외주박스"}};
 
 let db = null;
 let productsMap = {};
+let productsByName = {};
 let unsubscribeOrders = null;
 let currentOrders = [];
 
@@ -438,19 +445,38 @@ async function checkProductsSeeded(){
 async function loadProductsForAutocomplete(){
   const snap = await db.collection('products').get();
   productsMap = {};
-  const dl = document.getElementById('productList');
-  dl.innerHTML = '';
+  productsByName = {};
+  const codeDl = document.getElementById('codeList');
+  const nameDl = document.getElementById('nameList');
+  codeDl.innerHTML = '';
+  nameDl.innerHTML = '';
   if(!snap.empty){
     snap.forEach(doc=>{
       const d = doc.data();
       productsMap[d.code] = d.name || '';
-      const opt = document.createElement('option');
-      opt.value = d.code;
-      opt.label = d.name || '';
-      dl.appendChild(opt);
+      const codeOpt = document.createElement('option');
+      codeOpt.value = d.code;
+      codeDl.appendChild(codeOpt);
+      if(d.name){
+        if(!(d.name in productsByName)) productsByName[d.name] = d.code;
+        const nameOpt = document.createElement('option');
+        nameOpt.value = d.name;
+        nameDl.appendChild(nameOpt);
+      }
     });
   }else{
-    PRODUCTS_SEED.forEach(p=>{ productsMap[p.code] = p.name; });
+    PRODUCTS_SEED.forEach(p=>{
+      productsMap[p.code] = p.name;
+      if(p.name && !(p.name in productsByName)) productsByName[p.name] = p.code;
+      const codeOpt = document.createElement('option');
+      codeOpt.value = p.code;
+      codeDl.appendChild(codeOpt);
+      if(p.name){
+        const nameOpt = document.createElement('option');
+        nameOpt.value = p.name;
+        nameDl.appendChild(nameOpt);
+      }
+    });
   }
 }
 
@@ -479,7 +505,24 @@ document.getElementById('importBtn').addEventListener('click', async ()=>{
 
 document.getElementById('fCode').addEventListener('input', (e)=>{
   const code = e.target.value.trim();
-  document.getElementById('fName').textContent = productsMap[code] ? '→ ' + productsMap[code] : '';
+  const foundName = productsMap[code];
+  if(foundName){
+    document.getElementById('fProductName').value = foundName;
+    document.getElementById('fName').textContent = '→ ' + foundName;
+  }else{
+    document.getElementById('fName').textContent = '';
+  }
+});
+
+document.getElementById('fProductName').addEventListener('input', (e)=>{
+  const name = e.target.value.trim();
+  const foundCode = productsByName[name];
+  if(foundCode){
+    document.getElementById('fCode').value = foundCode;
+    document.getElementById('fName').textContent = '→ 코드 ' + foundCode;
+  }else{
+    document.getElementById('fName').textContent = '';
+  }
 });
 
 ['fV1','fV2','fV3','fV4','fV5'].forEach(id=>{
@@ -494,9 +537,12 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   if(!db){ toast('먼저 Firebase 설정을 완료해주세요.', true); return; }
   if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 출고 지시를 등록할 수 있습니다.', true); return; }
   const date = document.getElementById('fDate').value;
-  const code = document.getElementById('fCode').value.trim();
+  let code = document.getElementById('fCode').value.trim();
+  let name = document.getElementById('fProductName').value.trim();
   if(!date){ toast('날짜를 선택해주세요.', true); return; }
-  if(!code){ toast('제품코드를 입력해주세요.', true); return; }
+  if(!code && !name){ toast('제품코드 또는 제품명을 입력해주세요.', true); return; }
+  if(code && !name) name = productsMap[code] || '';
+  if(name && !code) code = productsByName[name] || '';
 
   const v1 = Number(document.getElementById('fV1').value)||0;
   const v2 = Number(document.getElementById('fV2').value)||0;
@@ -504,14 +550,11 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   const v4 = Number(document.getElementById('fV4').value)||0;
   const v5 = Number(document.getElementById('fV5').value)||0;
   const qty = v1+v2+v3+v4+v5;
-  const shipType = document.getElementById('fShipType').value;
 
   const order = {
-    date, productCode: code, productName: productsMap[code] || '',
-    shipType, v1,v2,v3,v4,v5, qty,
+    date, productCode: code, productName: name,
+    v1,v2,v3,v4,v5, qty,
     v1Done: false, v2Done: false, v3Done: false, v4Done: false, v5Done: false,
-    ep1Qty: shipType === 'EP1' ? qty : 0,
-    mailQty: shipType === '메일' ? qty : 0,
     note: document.getElementById('fNote').value.trim(),
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     createdBy: currentEmployeeNo || ''
@@ -521,6 +564,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     await db.collection('orders').add(order);
     toast('출고 지시 완료');
     document.getElementById('fCode').value = '';
+    document.getElementById('fProductName').value = '';
     document.getElementById('fName').textContent = '';
     document.getElementById('fV1').value = '';
     document.getElementById('fV2').value = '';
@@ -576,6 +620,14 @@ function orderGroup(o){
   const info = PRICE_MAP[o.productName];
   return info ? info.group : '기타';
 }
+function orderCategory(o){
+  const info = PRICE_MAP[o.productName];
+  return info ? info.category : '기타';
+}
+
+const CATEGORY_ORDER = ['BOX','Plug','Tray','기어박스','단프라','외주박스','평판'];
+let currentCategoryFilter = '';
+let expandedGroups = new Set();
 
 function renderReport(){
   const tbody = document.getElementById('reportGroupRows');
@@ -585,28 +637,34 @@ function renderReport(){
   const dailyOrders = allOrdersForReport.filter(o=> o.date === viewDate);
   const cumulativeOrders = allOrdersForReport.filter(o=> o.date <= viewDate);
 
-  const groupTotals = {};
+  const catTotals = {};
   dailyOrders.forEach(o=>{
-    const g = orderGroup(o);
-    groupTotals[g] = (groupTotals[g]||0) + orderAmount(o);
+    const c = orderCategory(o);
+    catTotals[c] = (catTotals[c]||0) + orderAmount(o);
   });
 
-  const groups = Object.keys(groupTotals).sort();
+  const cats = CATEGORY_ORDER.filter(c=> c in catTotals).concat(Object.keys(catTotals).filter(c=> !CATEGORY_ORDER.includes(c)));
   tbody.innerHTML = '';
-  if(groups.length === 0){
+  if(cats.length === 0){
     tbody.innerHTML = '<tr class="empty-row"><td colspan="2">데이터 없음</td></tr>';
   }else{
-    groups.forEach(g=>{
+    cats.forEach(c=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>'+g+'</td><td>'+Math.round(groupTotals[g]).toLocaleString()+'</td>';
+      tr.className = 'cat-row' + (currentCategoryFilter === c ? ' active' : '');
+      tr.innerHTML = '<td>'+c+'</td><td>'+Math.round(catTotals[c]).toLocaleString()+'원</td>';
+      tr.addEventListener('click', ()=>{
+        currentCategoryFilter = (currentCategoryFilter === c) ? '' : c;
+        renderReport();
+        renderOrders();
+      });
       tbody.appendChild(tr);
     });
   }
 
   const dailyTotal = dailyOrders.reduce((a,o)=>a+orderAmount(o),0);
   const cumulativeTotal = cumulativeOrders.reduce((a,o)=>a+orderAmount(o),0);
-  document.getElementById('reportDailyTotal').textContent = Math.round(dailyTotal).toLocaleString();
-  document.getElementById('reportCumulativeTotal').textContent = Math.round(cumulativeTotal).toLocaleString();
+  document.getElementById('reportDailyTotal').textContent = Math.round(dailyTotal).toLocaleString() + '원';
+  document.getElementById('reportCumulativeTotal').textContent = Math.round(cumulativeTotal).toLocaleString() + '원';
 }
 
 const FIXED_LOCATION_ORDER = ["SLH ass'y","LTMA","감속기","Bearing","사출","사출행크스","Belt&Chain","가이드","RSTM","중부물류"];
@@ -669,34 +727,55 @@ function vqtyCell(o, n){
 function renderOrders(){
   const tbody = document.getElementById('orderRows');
   const locFilter = document.getElementById('viewLocation').value;
-  const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : sortByFixedLocation(currentOrders);
+  let displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : sortByFixedLocation(currentOrders);
+  if(currentCategoryFilter) displayed = displayed.filter(o=> orderCategory(o) === currentCategoryFilter);
   tbody.innerHTML = '';
   if(displayed.length === 0){
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 출고 내역이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">해당 조건의 출고 내역이 없습니다.</td></tr>';
   }else{
+    const groupCounts = {};
+    displayed.forEach(o=>{ groupCounts[o.note] = (groupCounts[o.note]||0) + 1; });
+
     displayed.forEach((o, idx)=>{
       const prevNote = idx > 0 ? displayed[idx-1].note : undefined;
       const nextNote = idx < displayed.length-1 ? displayed[idx+1].note : undefined;
       const groupStart = o.note !== prevNote;
       const groupEnd = o.note !== nextNote;
       const bColor = 'var(--line)';
+      const groupKey = o.note || '';
+      const isCollapsed = !expandedGroups.has(groupKey);
 
       if(groupStart){
-        const headerTr = document.createElement('tr');
-        headerTr.innerHTML =
-          '<th class="group-th" style="border-top:3px solid '+bColor+';border-left:3px solid '+bColor+';border-top-left-radius:10px;">코드</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">제품명</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">방식</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">1호차</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">2호차</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">3호차</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">4호차</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">추가차량</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">합계</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';">위치/담당자</th>'+
-          '<th class="group-th" style="border-top:3px solid '+bColor+';border-right:3px solid '+bColor+';border-top-right-radius:10px;"></th>';
-        tbody.appendChild(headerTr);
+        const toggleTr = document.createElement('tr');
+        toggleTr.className = 'group-toggle-row';
+        const arrow = isCollapsed ? '▶' : '▼';
+        toggleTr.innerHTML =
+          '<td colspan="10" style="border-top:3px solid '+bColor+';border-left:3px solid '+bColor+';border-right:3px solid '+bColor+';'+(isCollapsed?'border-bottom:3px solid '+bColor+';border-radius:10px;':'border-top-left-radius:10px;border-top-right-radius:10px;')+'background:var(--panel-2); font-weight:700; cursor:pointer; padding:9px 12px;">'+arrow+' '+(o.note||'위치 미지정')+' <span style="color:var(--text-dim); font-weight:400;">('+groupCounts[o.note]+'건)</span></td>';
+        toggleTr.addEventListener('click', ()=>{
+          if(expandedGroups.has(groupKey)) expandedGroups.delete(groupKey);
+          else expandedGroups.add(groupKey);
+          renderOrders();
+        });
+        tbody.appendChild(toggleTr);
+
+        if(!isCollapsed){
+          const headerTr = document.createElement('tr');
+          headerTr.innerHTML =
+            '<th class="group-th" style="border-left:3px solid '+bColor+';">코드</th>'+
+            '<th class="group-th">제품명</th>'+
+            '<th class="group-th">1호차</th>'+
+            '<th class="group-th">2호차</th>'+
+            '<th class="group-th">3호차</th>'+
+            '<th class="group-th">4호차</th>'+
+            '<th class="group-th">추가차량</th>'+
+            '<th class="group-th">합계</th>'+
+            '<th class="group-th">위치/담당자</th>'+
+            '<th class="group-th" style="border-right:3px solid '+bColor+';"></th>';
+          tbody.appendChild(headerTr);
+        }
       }
+
+      if(isCollapsed) return;
 
       const tr = document.createElement('tr');
       let mid = '';
@@ -711,7 +790,6 @@ function renderOrders(){
       tr.innerHTML =
         '<td'+firstAttr+'>'+o.productCode+'</td>'+
         '<td'+midAttr+'>'+(o.productName||'-')+'</td>'+
-        '<td'+midAttr+'><span class="tag '+(o.shipType==='EP1'?'ep1':'mail')+'">'+o.shipType+'</span></td>'+
         '<td'+midAttr+'>'+vqtyCell(o,1)+'</td><td'+midAttr+'>'+vqtyCell(o,2)+'</td><td'+midAttr+'>'+vqtyCell(o,3)+'</td><td'+midAttr+'>'+vqtyCell(o,4)+'</td><td'+midAttr+'>'+vqtyCell(o,5)+'</td>'+
         '<td'+midAttr+'>'+o.qty+'</td>'+
         '<td style="font-family:var(--font-body);'+mid+'">'+(o.note||'-')+'</td>'+
@@ -745,23 +823,20 @@ function renderOrders(){
 
   const totQty = displayed.reduce((a,o)=>a+o.qty,0);
   const completedQty = o => [1,2,3,4,5].reduce((s,n)=> s + shippedQty(o,n), 0);
-  const totEp1 = displayed.filter(o=>o.shipType==='EP1').reduce((a,o)=>a+completedQty(o),0);
-  const totMail = displayed.filter(o=>o.shipType==='메일').reduce((a,o)=>a+completedQty(o),0);
-  const ep1Pct = totQty > 0 ? Math.round(totEp1/totQty*100) : 0;
-  const mailPct = totQty > 0 ? Math.round(totMail/totQty*100) : 0;
+  const totDone = displayed.reduce((a,o)=>a+completedQty(o),0);
+  const donePct = totQty > 0 ? Math.round(totDone/totQty*100) : 0;
   document.getElementById('totQty').textContent = totQty;
-  document.getElementById('totEp1Pct').textContent = ep1Pct + '%';
-  document.getElementById('totEp1').textContent = totEp1;
-  document.getElementById('totMailPct').textContent = mailPct + '%';
-  document.getElementById('totMail').textContent = totMail;
+  document.getElementById('totDonePct').textContent = donePct + '%';
+  document.getElementById('totDoneQty').textContent = totDone;
 }
 
 document.getElementById('exportBtn').addEventListener('click', ()=>{
   const locFilter = document.getElementById('viewLocation').value;
-  const displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : sortByFixedLocation(currentOrders);
+  let displayed = locFilter ? currentOrders.filter(o=> o.note === locFilter) : sortByFixedLocation(currentOrders);
+  if(currentCategoryFilter) displayed = displayed.filter(o=> orderCategory(o) === currentCategoryFilter);
   if(displayed.length === 0){ toast('내보낼 데이터가 없습니다.', true); return; }
-  const header = ['날짜','제품코드','제품명','방식','1호차','2호차','3호차','4호차','추가차량','합계','위치/담당자'];
-  const rows = displayed.map(o=>[o.date,o.productCode,o.productName,o.shipType,o.v1,o.v2,o.v3,o.v4,o.v5,o.qty,o.note]);
+  const header = ['날짜','제품코드','제품명','1호차','2호차','3호차','4호차','추가차량','합계','위치/담당자'];
+  const rows = displayed.map(o=>[o.date,o.productCode,o.productName,o.v1,o.v2,o.v3,o.v4,o.v5,o.qty,o.note]);
   const csv = [header, ...rows].map(r=> r.map(v=> '"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
@@ -902,7 +977,7 @@ try{
 
 document.getElementById('fDate').value = todayStr();
 document.getElementById('viewDate').value = todayStr();
-PRODUCTS_SEED.forEach(p=>{ productsMap[p.code] = p.name; });
+PRODUCTS_SEED.forEach(p=>{ productsMap[p.code] = p.name; if(p.name && !(p.name in productsByName)) productsByName[p.name] = p.code; });
 initFirebase();
 
 if('serviceWorker' in navigator){
