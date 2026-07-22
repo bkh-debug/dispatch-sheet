@@ -532,14 +532,19 @@ document.getElementById('excelImportBtn').addEventListener('click', ()=>{
 document.getElementById('excelFileInput').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
+  const importBtn = document.getElementById('excelImportBtn');
+  importBtn.disabled = true;
+  importBtn.textContent = '엑셀 읽는 중...';
+  toast('엑셀 파일을 읽고 있어요. 잠시만요...');
   const reader = new FileReader();
   reader.onload = (evt)=>{
+    setTimeout(()=>{
     try{
       const data = new Uint8Array(evt.target.result);
-      const wb = XLSX.read(data, { type: 'array' });
+      const wb = XLSX.read(data, { type: 'array', cellFormula: false, cellHTML: false, cellStyles: false, cellDates: false, sheetStubs: false });
       const sheetName = wb.SheetNames.includes('출고지시서') ? '출고지시서' : wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
 
       // find header row by looking for '1호차'
       let headerRowIdx = -1, col1 = -1, col2 = -1, col3 = -1, col4 = -1, colNote = -1;
@@ -595,7 +600,11 @@ document.getElementById('excelFileInput').addEventListener('change', (e)=>{
       document.getElementById('excelPreviewPanel').style.display = 'block';
     }catch(err){
       toast('엑셀 읽기 실패: ' + err.message, true);
+    }finally{
+      importBtn.disabled = false;
+      importBtn.textContent = '📄 엑셀 출고지시서 업로드';
     }
+    }, 30);
   };
   reader.readAsArrayBuffer(file);
   e.target.value = '';
