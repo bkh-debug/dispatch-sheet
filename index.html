@@ -544,7 +544,17 @@ document.getElementById('excelFileInput').addEventListener('change', (e)=>{
       const wb = XLSX.read(data, { type: 'array', cellFormula: false, cellHTML: false, cellStyles: false, cellDates: false, sheetStubs: false });
       const sheetName = wb.SheetNames.includes('출고지시서') ? '출고지시서' : wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+      // Some exported sheets report a bloated used-range (e.g. 1,000,000+ rows) even
+      // though real data only spans a few hundred rows. Clamp it so we don't try to
+      // build a giant in-memory array, which is what freezes the page.
+      if(ws['!ref']){
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        if(range.e.r > 2000){
+          range.e.r = 2000;
+          ws['!ref'] = XLSX.utils.encode_range(range);
+        }
+      }
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true, range: ws['!ref'] });
 
       // find header row by looking for '1호차'
       let headerRowIdx = -1, col1 = -1, col2 = -1, col3 = -1, col4 = -1, colNote = -1;
