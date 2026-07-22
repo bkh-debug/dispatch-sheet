@@ -238,6 +238,10 @@
       <button class="btn-ghost" id="cancelExcelImport" style="margin-left:auto; padding:4px 10px; font-size:12px;">취소</button>
       <button class="btn-primary" id="confirmExcelImport" style="width:auto; margin-top:0; padding:8px 16px;">이 내용대로 가져오기</button>
     </div>
+    <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); margin-bottom:12px; cursor:pointer;">
+      <input type="checkbox" id="excelReplaceExisting" checked style="width:auto;">
+      가져오기 전에 이 날짜에 이미 등록된 출고 내역을 먼저 삭제 (중복 방지, 재업로드 시 권장)
+    </label>
     <div style="overflow-x:auto; max-height:320px; overflow-y:auto;">
       <table>
         <thead><tr><th>코드</th><th>제품명</th><th>1호</th><th>2호</th><th>3호</th><th>4호</th><th>위치/담당자</th></tr></thead>
@@ -642,9 +646,24 @@ document.getElementById('confirmExcelImport').addEventListener('click', async ()
   if(!db){ toast('먼저 Firebase 설정을 완료해주세요.', true); return; }
   if(excelImportRows.length === 0) return;
   const date = document.getElementById('fDate').value || todayStr();
+  const shouldReplace = document.getElementById('excelReplaceExisting').checked;
   const btn = document.getElementById('confirmExcelImport');
   btn.disabled = true; btn.textContent = '가져오는 중...';
   try{
+    if(shouldReplace){
+      btn.textContent = '기존 내역 삭제 중...';
+      const existing = await db.collection('orders').where('date','==',date).get();
+      if(!existing.empty){
+        const delBatchSize = 400;
+        const docs = existing.docs;
+        for(let i=0; i<docs.length; i+=delBatchSize){
+          const delBatch = db.batch();
+          docs.slice(i, i+delBatchSize).forEach(d=> delBatch.delete(d.ref));
+          await delBatch.commit();
+        }
+      }
+      btn.textContent = '가져오는 중...';
+    }
     const batchSize = 400;
     for(let i=0; i<excelImportRows.length; i+=batchSize){
       const batch = db.batch();
