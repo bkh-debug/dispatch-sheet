@@ -571,6 +571,19 @@ document.getElementById('excelFileInput').addEventListener('change', (e)=>{
       }
       if(headerRowIdx === -1){ toast('엑셀에서 "1호차" 열을 찾지 못했습니다. 형식을 확인해주세요.', true); return; }
 
+      // 위치/담당자 셀이 병합되어 있으면 SheetJS는 맨 위 행에만 값을 주고 나머지는
+      // 비어있는 채로 읽힙니다. 병합 범위를 확인해서 같은 값을 모든 행에 채워줍니다.
+      if(colNote !== -1 && ws['!merges']){
+        ws['!merges'].forEach(m=>{
+          if(m.s.c === colNote && m.e.c === colNote && m.e.r > m.s.r){
+            const topVal = rows[m.s.r] ? rows[m.s.r][colNote] : '';
+            for(let r=m.s.r; r<=m.e.r; r++){
+              if(rows[r]) rows[r][colNote] = topVal;
+            }
+          }
+        });
+      }
+
       excelImportRows = [];
       for(let r=headerRowIdx+1; r<rows.length; r++){
         const row = rows[r];
