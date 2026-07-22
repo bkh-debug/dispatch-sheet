@@ -837,11 +837,13 @@ function renderReport(){
 
 const FIXED_LOCATION_ORDER = ["SLH ass'y","LTMA","감속기","Bearing","사출","사출행크스","Belt&Chain","가이드","RSTM","중부물류"];
 function sortByFixedLocation(list){
+  const noteFirstSeen = {};
+  list.forEach((o,i)=>{ if(!(o.note in noteFirstSeen)) noteFirstSeen[o.note] = i; });
   return list.slice().sort((a,b)=>{
     let ia = FIXED_LOCATION_ORDER.indexOf(a.note);
     let ib = FIXED_LOCATION_ORDER.indexOf(b.note);
-    if(ia === -1) ia = FIXED_LOCATION_ORDER.length;
-    if(ib === -1) ib = FIXED_LOCATION_ORDER.length;
+    if(ia === -1) ia = FIXED_LOCATION_ORDER.length + noteFirstSeen[a.note];
+    if(ib === -1) ib = FIXED_LOCATION_ORDER.length + noteFirstSeen[b.note];
     return ia - ib;
   });
 }
