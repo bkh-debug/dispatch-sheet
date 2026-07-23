@@ -467,12 +467,12 @@
           </div>
           <div>
             <label>검색</label>
-            <input type="text" id="invSearchInput" placeholder="코드 또는 제품명 검색">
+            <input type="text" id="invSearchInput" placeholder="구분 또는 제품명 검색">
           </div>
         </div>
         <div style="overflow-x:auto; max-height:600px; overflow-y:auto;">
           <table>
-            <thead><tr><th>코드</th><th>제품명</th><th>전일재고</th><th>출고</th><th>입고</th><th>세척</th><th>현재고</th></tr></thead>
+            <thead><tr><th>구분</th><th>제품명</th><th>전일재고</th><th>출고</th><th>입고</th><th>세척</th><th>현재고</th></tr></thead>
             <tbody id="invStockRows"><tr class="empty-row"><td colspan="7">불러오는 중...</td></tr></tbody>
           </table>
         </div>
@@ -513,6 +513,9 @@ const PRODUCTS_SEED = [{"code": "7813", "name": "001"}, {"code": "7678", "name":
 
 /* 일일업무보고 시트에서 추출한 품번별 그룹/단가 (신청수량 기준 출고금액 계산용) */
 const PRICE_MAP = {"001":{"group":"A","price":83.54,"category":"BOX"},"008":{"group":"B","price":480.81,"category":"BOX"},"008.1":{"group":"B","price":480.81,"category":"BOX"},"009":{"group":"B","price":480.81,"category":"BOX"},"011":{"group":"D","price":389.01,"category":"BOX"},"011.2":{"group":"D","price":389.01,"category":"BOX"},"011.4":{"group":"D","price":389.01,"category":"BOX"},"011.5":{"group":"D","price":389.01,"category":"BOX"},"012":{"group":"D","price":389.01,"category":"BOX"},"012.1":{"group":"D","price":389.01,"category":"BOX"},"013":{"group":"B","price":480.81,"category":"BOX"},"013.1":{"group":"B","price":480.81,"category":"BOX"},"013.2":{"group":"B","price":480.81,"category":"BOX"},"013.3":{"group":"B","price":480.81,"category":"BOX"},"014":{"group":"B","price":480.81,"category":"BOX"},"014.1":{"group":"B","price":480.81,"category":"BOX"},"4315(파랑)":{"group":"B","price":480.81,"category":"BOX"},"4315(검정)":{"group":"B","price":480.81,"category":"BOX"},"014.4":{"group":"B","price":480.81,"category":"BOX"},"014.5":{"group":"B","price":480.81,"category":"BOX"},"015":{"group":"B","price":480.81,"category":"BOX"},"015.1":{"group":"B","price":480.81,"category":"BOX"},"015.2":{"group":"B","price":480.81,"category":"BOX"},"016":{"group":"D","price":389.01,"category":"BOX"},"016.1":{"group":"D","price":389.01,"category":"BOX"},"105":{"group":"D","price":389.01,"category":"BOX"},"105.1":{"group":"D","price":389.01,"category":"BOX"},"115":{"group":"M","price":427.74,"category":"BOX"},"115.1":{"group":"B","price":480.81,"category":"BOX"},"115.2":{"group":"M","price":427.74,"category":"BOX"},"6429":{"group":"A","price":522.12,"category":"BOX"},"124":{"group":"A","price":83.54,"category":"BOX"},"149":{"group":"D","price":389.01,"category":"BOX"},"321":{"group":"D","price":62.24,"category":"BOX"},"431":{"group":"B","price":76.93,"category":"BOX"},"432":{"group":"B","price":76.93,"category":"BOX"},"NPC회색":{"group":"D","price":62.24,"category":"BOX"},"048":{"group":"I","price":58.52,"category":"단프라"},"049":{"group":"I","price":58.52,"category":"단프라"},"049.1":{"group":"I","price":58.52,"category":"단프라"},"051":{"group":"I","price":58.52,"category":"단프라"},"052":{"group":"I","price":58.52,"category":"단프라"},"053":{"group":"I","price":58.52,"category":"단프라"},"054":{"group":"I","price":58.52,"category":"단프라"},"058":{"group":"I","price":58.52,"category":"단프라"},"097":{"group":"I","price":58.52,"category":"단프라"},"100":{"group":"I","price":58.52,"category":"단프라"},"118":{"group":"I","price":58.52,"category":"단프라"},"119":{"group":"I","price":9.36,"category":"단프라"},"120":{"group":"I","price":58.52,"category":"단프라"},"121":{"group":"I","price":58.52,"category":"단프라"},"122":{"group":"I","price":58.52,"category":"단프라"},"133":{"group":"I","price":9.36,"category":"단프라"},"134":{"group":"I","price":58.52,"category":"단프라"},"135":{"group":"I","price":9.36,"category":"단프라"},"137":{"group":"I","price":58.52,"category":"단프라"},"138":{"group":"I","price":9.36,"category":"단프라"},"146":{"group":"I","price":58.52,"category":"단프라"},"156.1":{"group":"I","price":9.36,"category":"단프라"},"211.1":{"group":"I","price":58.52,"category":"단프라"},"309":{"group":"I","price":9.36,"category":"단프라"},"312":{"group":"I","price":9.36,"category":"단프라"},"318":{"group":"I","price":9.36,"category":"단프라"},"320":{"group":"I","price":58.52,"category":"단프라"},"320.1":{"group":"I","price":58.52,"category":"단프라"},"023":{"group":"H","price":182.46,"category":"Tray"},"024":{"group":"H","price":182.46,"category":"Tray"},"027":{"group":"H","price":29.19,"category":"Tray"},"077":{"group":"G","price":341.96,"category":"Tray"},"081":{"group":"H","price":29.19,"category":"Tray"},"084":{"group":"H","price":29.19,"category":"Tray"},"102":{"group":"H","price":29.19,"category":"Tray"},"104":{"group":"G","price":366.06,"category":"Tray"},"125":{"group":"H","price":29.19,"category":"Tray"},"126":{"group":"H","price":29.19,"category":"Tray"},"127":{"group":"H","price":29.19,"category":"Tray"},"129":{"group":"K","price":341.96,"category":"Tray"},"130":{"group":"H","price":182.46,"category":"Tray"},"147":{"group":"H","price":29.19,"category":"Tray"},"148":{"group":"H","price":29.19,"category":"Tray"},"150":{"group":"H","price":182.46,"category":"Tray"},"158.1":{"group":"H","price":182.46,"category":"Tray"},"162.1":{"group":"H","price":182.46,"category":"Tray"},"164":{"group":"G","price":366.06,"category":"Tray"},"174":{"group":"H","price":182.46,"category":"Tray"},"176.1":{"group":"H","price":29.19,"category":"Tray"},"176.2":{"group":"H","price":29.19,"category":"Tray"},"178":{"group":"H","price":182.46,"category":"Tray"},"184":{"group":"G","price":366.06,"category":"Tray"},"189":{"group":"H","price":29.19,"category":"Tray"},"189.1":{"group":"H","price":182.46,"category":"Tray"},"198.1":{"group":"H","price":29.19,"category":"Tray"},"199.1":{"group":"H","price":29.19,"category":"Tray"},"200":{"group":"H","price":182.46,"category":"Tray"},"200.1":{"group":"H","price":182.46,"category":"Tray"},"202":{"group":"H","price":29.19,"category":"Tray"},"203":{"group":"H","price":29.19,"category":"Tray"},"204":{"group":"H","price":29.19,"category":"Tray"},"212":{"group":"H","price":182.46,"category":"Tray"},"213":{"group":"H","price":182.46,"category":"Tray"},"213.1":{"group":"H","price":29.19,"category":"Tray"},"214":{"group":"H","price":182.46,"category":"Tray"},"214.1":{"group":"H","price":29.19,"category":"Tray"},"215":{"group":"H","price":182.46,"category":"Tray"},"216":{"group":"H","price":182.46,"category":"Tray"},"216.1":{"group":"H","price":29.19,"category":"Tray"},"217":{"group":"H","price":182.46,"category":"Tray"},"217.1":{"group":"H","price":29.19,"category":"Tray"},"218":{"group":"H","price":182.46,"category":"Tray"},"218.1":{"group":"H","price":29.19,"category":"Tray"},"219":{"group":"H","price":182.46,"category":"Tray"},"220":{"group":"H","price":182.46,"category":"Tray"},"221":{"group":"H","price":182.46,"category":"Tray"},"221.2":{"group":"H","price":29.19,"category":"Tray"},"221.3":{"group":"H","price":182.46,"category":"Tray"},"223":{"group":"H","price":29.19,"category":"Tray"},"225":{"group":"K","price":341.96,"category":"Tray"},"226":{"group":"H","price":29.19,"category":"Tray"},"226.1":{"group":"H","price":182.46,"category":"Tray"},"227":{"group":"H","price":29.19,"category":"Tray"},"229":{"group":"H","price":29.19,"category":"Tray"},"231":{"group":"H","price":182.46,"category":"Tray"},"233.2":{"group":"K","price":341.96,"category":"Tray"},"233.3":{"group":"K","price":341.96,"category":"Tray"},"234.2":{"group":"H","price":182.46,"category":"Tray"},"235":{"group":"H","price":29.19,"category":"Tray"},"236":{"group":"H","price":29.19,"category":"Tray"},"237":{"group":"H","price":29.19,"category":"Tray"},"238":{"group":"H","price":29.19,"category":"Tray"},"239":{"group":"H","price":29.19,"category":"Tray"},"240":{"group":"H","price":29.19,"category":"Tray"},"241":{"group":"H","price":29.19,"category":"Tray"},"242":{"group":"H","price":29.19,"category":"Tray"},"243":{"group":"H","price":29.19,"category":"Tray"},"055":{"group":"J","price":6.89,"category":"평판"},"056":{"group":"J","price":6.89,"category":"평판"},"057":{"group":"J","price":6.89,"category":"평판"},"101":{"group":"J","price":6.89,"category":"평판"},"141":{"group":"J","price":6.89,"category":"평판"},"142":{"group":"J","price":6.89,"category":"평판"},"144":{"group":"J","price":6.89,"category":"평판"},"볼세척품":{"group":"L","price":1.0,"category":"Plug"},"cap1":{"group":"N1","price":25.0,"category":"기어박스"},"cap2":{"group":"N1","price":25.0,"category":"기어박스"},"cap3":{"group":"N1","price":25.0,"category":"기어박스"},"cap4":{"group":"N1","price":25.0,"category":"기어박스"},"cap5":{"group":"N2","price":70.0,"category":"기어박스"},"cap6":{"group":"N2","price":70.0,"category":"기어박스"},"DIF":{"group":"T","price":1113.5,"category":"기어박스"},"PEU":{"group":"S","price":496.9,"category":"기어박스"},"lid":{"group":"O","price":483.0,"category":"기어박스"},"pallet":{"group":"P","price":495.0,"category":"기어박스"},"blister":{"group":"Q","price":1080.0,"category":"기어박스"},"sleeve":{"group":"R","price":482.0,"category":"기어박스"},"GS네트웍스":{"group":"os","price":500.0,"category":"외주박스"},"포스코A":{"group":"os","price":2700.0,"category":"외주박스"},"포스코B":{"group":"os","price":3440.0,"category":"외주박스"},"포스코C":{"group":"os","price":1700.0,"category":"외주박스"},"유신정밀":{"group":"os","price":1000.0,"category":"외주박스"},"다원식품":{"group":"os","price":700.0,"category":"외주박스"},"YK테크":{"group":"os","price":600.0,"category":"외주박스"},"만도브로제":{"group":"os","price":840.0,"category":"외주박스"},"엠넥스":{"group":"os","price":650.0,"category":"외주박스"},"아센텍":{"group":"os","price":1000.0,"category":"외주박스"},"현대기업":{"group":"os","price":900.0,"category":"외주박스"},"박스1600":{"group":"os","price":1600.0,"category":"외주박스"},"박스1700":{"group":"os","price":1700.0,"category":"외주박스"},"박스1800":{"group":"os","price":1800.0,"category":"외주박스"},"박스1900":{"group":"os","price":1900.0,"category":"외주박스"},"트레이200":{"group":"os","price":483.0,"category":"외주박스"}};
+
+/* 재고현황표(EP1 시트)의 실제 순서 - 재고현황 화면에서 이 순서대로 표시돼요 */
+const INVENTORY_ORDER = ["001", "008", "008.1", "009", "011", "011.2", "011.4", "151", "012", "013", "013.1", "014", "014.1", "015.1", "015", "016", "016.1", "105", "115", "115.1", "123", "124", "149", "321", "431", "432", "115.2", "011.5", "NPC회색", "4315(검정)", "3215(검정)", "4328(검정)", "4315(민트)", "6429", "3215(회색)", "4315(회색)", "4328(회색)", "6428", "4315(파랑)", "156.1", "148", "150", "147", "100", "048", "052", "053", "054", "058", "097", "137", "307", "049", "051", "118", "119", "120", "121", "122", "133", "134", "135", "211.1", "309", "312", "146", "322", "136", "138", "049.1", "315", "318", "319", "320", "320.1", "321.1", "082", "125", "126", "127", "130", "158.1", "023", "024", "027", "077", "081", "102", "129", "104", "162.1", "164", "174", "178", "184", "189", "189.1", "200", "202", "203", "204", "212", "213", "214", "215", "216", "217", "218", "219", "220", "221", "221.1", "221.2", "221.3", "213.1", "214.1", "216.1", "217.1", "218.1", "198.1", "199.1", "223", "224", "225", "226", "226.1", "227", "229", "230.1", "231", "233.2", "233.3", "234.1", "234.2", "235", "236", "237", "238", "239", "240", "241", "244", "243", "245", "055", "056", "057", "101", "141", "142", "144", "002.1", "002.2", "112.2", "299", "299.2", "308.1", "324", "325", "326", "310", "191", "192", "046", "047", "179", "181", "182", "183", "303", "311", "306", "313", "314.1", "316", "076", "116", "116.1", "304", "302", "038.2", "038.3", "SLH방청유지", "012910", "012960", "017960", "012870", "012980", "012990", "017970", "cap1", "lid", "pallet", "blister", "sleeve", "DIF", "PEU", "볼세척품"];
 
 let db = null;
 let productsMap = {};
@@ -1347,10 +1350,6 @@ function prevDayStr(dateStr){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
-function shippedQtyForOrder(o){
-  return [1,2,3,4,5].reduce((s,n)=> s + shippedQty(o,n), 0);
-}
-
 function sumLogQtyUpTo(list, product, dateStr){
   return list.filter(l=> l.productName===product && l.date <= dateStr).reduce((a,l)=>a+(l.qty||0),0);
 }
@@ -1358,10 +1357,10 @@ function sumLogQtyOnDay(list, product, dateStr){
   return list.filter(l=> l.productName===product && l.date === dateStr).reduce((a,l)=>a+(l.qty||0),0);
 }
 function sumShippedUpTo(product, dateStr){
-  return allOrdersForInventory.filter(o=> o.productName===product && o.date <= dateStr).reduce((a,o)=>a+shippedQtyForOrder(o),0);
+  return allOrdersForInventory.filter(o=> o.productName===product && o.date <= dateStr).reduce((a,o)=>a+(o.qty||0),0);
 }
 function sumShippedOnDay(product, dateStr){
-  return allOrdersForInventory.filter(o=> o.productName===product && o.date === dateStr).reduce((a,o)=>a+shippedQtyForOrder(o),0);
+  return allOrdersForInventory.filter(o=> o.productName===product && o.date === dateStr).reduce((a,o)=>a+(o.qty||0),0);
 }
 function stockAsOf(product, dateStr){
   return sumLogQtyUpTo(allReceivingLogs, product, dateStr) + sumLogQtyUpTo(allCleaningLogs, product, dateStr) - sumShippedUpTo(product, dateStr);
@@ -1373,16 +1372,27 @@ function renderInventoryTable(){
   const search = (document.getElementById('invSearchInput').value||'').trim().toLowerCase();
   const viewDate = document.getElementById('invViewDate').value || todayStr();
   const prevDate = prevDayStr(viewDate);
-  let list = PRODUCTS_SEED.map(p=>{
-    const prevStock = stockAsOf(p.name, prevDate);
-    const outQty = sumShippedOnDay(p.name, viewDate);
-    const inQty = sumLogQtyOnDay(allReceivingLogs, p.name, viewDate);
-    const washQty = sumLogQtyOnDay(allCleaningLogs, p.name, viewDate);
+
+  const seedByName = {};
+  PRODUCTS_SEED.forEach(p=>{ if(!(p.name in seedByName)) seedByName[p.name] = p; });
+  const orderedNames = INVENTORY_ORDER.filter(n=> n in seedByName);
+  const leftoverNames = PRODUCTS_SEED.map(p=>p.name).filter(n=> !INVENTORY_ORDER.includes(n) && !orderedNames.includes(n));
+  const seen = new Set();
+  const finalOrder = [];
+  orderedNames.concat(leftoverNames).forEach(n=>{ if(!seen.has(n)){ seen.add(n); finalOrder.push(n); } });
+
+  let list = finalOrder.map(name=>{
+    const p = seedByName[name];
+    const prevStock = stockAsOf(name, prevDate);
+    const outQty = sumShippedOnDay(name, viewDate);
+    const inQty = sumLogQtyOnDay(allReceivingLogs, name, viewDate);
+    const washQty = sumLogQtyOnDay(allCleaningLogs, name, viewDate);
     const nowStock = prevStock - outQty + inQty + washQty;
-    return { code: p.code, name: p.name, prevStock, outQty, inQty, washQty, nowStock };
+    const item = (PRICE_MAP[name] && PRICE_MAP[name].category) || '기타';
+    return { code: p.code, item, name: p.name, prevStock, outQty, inQty, washQty, nowStock };
   });
   if(search){
-    list = list.filter(r=> r.code.toLowerCase().includes(search) || (r.name||'').toLowerCase().includes(search));
+    list = list.filter(r=> r.item.toLowerCase().includes(search) || (r.name||'').toLowerCase().includes(search));
   }
   tbody.innerHTML = '';
   if(list.length === 0){
@@ -1392,7 +1402,7 @@ function renderInventoryTable(){
   list.forEach(r=>{
     const tr = document.createElement('tr');
     const warn = r.nowStock < 0 ? ' style="color:var(--red); font-weight:700;"' : '';
-    tr.innerHTML = '<td>'+r.code+'</td><td>'+(r.name||'-')+'</td><td>'+r.prevStock+'</td><td>'+r.outQty+'</td><td>'+r.inQty+'</td><td>'+r.washQty+'</td>'+
+    tr.innerHTML = '<td>'+r.item+'</td><td>'+(r.name||'-')+'</td><td>'+r.prevStock+'</td><td>'+r.outQty+'</td><td>'+r.inQty+'</td><td>'+r.washQty+'</td>'+
       '<td'+warn+'><span class="vqty '+(r.nowStock<0?'pending':'done')+'" data-name="'+r.name.replace(/"/g,'&quot;')+'" data-code="'+r.code+'" title="눌러서 이 날짜에 재고 조정">'+r.nowStock+'</span></td>';
     tbody.appendChild(tr);
   });
