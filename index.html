@@ -459,8 +459,12 @@
 
       <div class="panel">
         <h2>재고 현황</h2>
-        <div class="hint" style="margin-bottom:14px;">현재고 = 이전 재고 - 출고완료수량 + 입고 + 세척. 숫자를 클릭하면 재고를 직접 수정할 수 있어요 (초기값 설정 등).</div>
+        <div class="hint" style="margin-bottom:14px;">현재고 = 전일재고 - 출고 + 입고 + 세척. 현재고 숫자를 클릭하면 그 날짜에 재고를 조정할 수 있어요.</div>
         <div class="filter-bar">
+          <div>
+            <label>조회 날짜</label>
+            <input type="date" id="invViewDate">
+          </div>
           <div>
             <label>검색</label>
             <input type="text" id="invSearchInput" placeholder="코드 또는 제품명 검색">
@@ -468,8 +472,8 @@
         </div>
         <div style="overflow-x:auto; max-height:600px; overflow-y:auto;">
           <table>
-            <thead><tr><th>코드</th><th>제품명</th><th>현재고</th></tr></thead>
-            <tbody id="invStockRows"><tr class="empty-row"><td colspan="3">불러오는 중...</td></tr></tbody>
+            <thead><tr><th>코드</th><th>제품명</th><th>전일재고</th><th>출고</th><th>입고</th><th>세척</th><th>현재고</th></tr></thead>
+            <tbody id="invStockRows"><tr class="empty-row"><td colspan="7">불러오는 중...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1090,20 +1094,13 @@ function renderOrders(){
       const id = el.dataset.id, field = el.dataset.field;
       const target = Number(el.dataset.target)||0;
       const shipped = Number(el.dataset.shipped)||0;
-      const productName = el.dataset.product || '';
       const input = prompt('출고된 수량을 입력하세요 (목표수량: '+target+')', shipped);
       if(input === null) return;
       let val = Number(input);
       if(isNaN(val) || val < 0){ toast('올바른 숫자를 입력해주세요.', true); return; }
       if(val > target) val = target;
-      const delta = val - shipped;
       try{
         await db.collection('orders').doc(id).update({ [field]: val });
-        if(delta !== 0 && productName){
-          await db.collection('inventory').doc(productName).set({
-            stock: firebase.firestore.FieldValue.increment(-delta)
-          }, { merge: true });
-        }
       }
       catch(e){ toast('상태 변경 실패: ' + e.message, true); }
     });
@@ -1273,13 +1270,15 @@ try{
 
 document.getElementById('fDate').value = todayStr();
 document.getElementById('invDate').value = todayStr();
+document.getElementById('invViewDate').value = todayStr();
 document.getElementById('viewDate').value = todayStr();
 PRODUCTS_SEED.forEach(p=>{ productsMap[p.code] = p.name; if(p.name && !(p.name in productsByName)) productsByName[p.name] = p.code; });
 initFirebase();
 
-// ===== 재고현황 (입고/세척/재고) =====
-let currentInventory = {};
-let currentInvLogs = [];
+// ===== 재고현황 (입고/세척/재고, 날짜별) =====
+let allOrdersForInventory = [];
+let allReceivingLogs = [];
+let allCleaningLogs = [];
 
 document.getElementById('invCode').addEventListener('input', (e)=>{
   const code = e.target.value.trim();
@@ -1314,7 +1313,7 @@ document.getElementById('invSubmitBtn').addEventListener('click', async ()=>{
   if(!code && !name){ toast('제품코드 또는 제품명을 입력해주세요.', true); return; }
   if(code && !name) name = productsMap[code] || '';
   if(name && !code) code = productsByName[name] || '';
-  if(qty <= 0){ toast('수량을 입력해주세요.', true); return; }
+  if(qty === 0){ toast('수량을 입력해주세요.', true); return; }
 
   const coll = type === 'in' ? 'receivingLogs' : 'cleaningLogs';
   try{
@@ -1323,9 +1322,6 @@ document.getElementById('invSubmitBtn').addEventListener('click', async ()=>{
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: currentEmployeeNo || ''
     });
-    await db.collection('inventory').doc(name).set({
-      stock: firebase.firestore.FieldValue.increment(qty)
-    }, { merge: true });
     toast((type==='in'?'입고':'세척') + ' 등록 완료');
     document.getElementById('invCode').value = '';
     document.getElementById('invProductName').value = '';
@@ -1338,57 +1334,102 @@ document.getElementById('invSubmitBtn').addEventListener('click', async ()=>{
 });
 
 function listenInventory(){
-  db.collection('inventory').onSnapshot(snap=>{
-    currentInventory = {};
-    snap.forEach(doc=>{ currentInventory[doc.id] = doc.data().stock || 0; });
+  db.collection('orders').onSnapshot(snap=>{
+    allOrdersForInventory = [];
+    snap.forEach(doc=> allOrdersForInventory.push({ id: doc.id, ...doc.data() }));
     renderInventoryTable();
-  }, err=> toast('재고 조회 실패: ' + err.message, true));
+  }, err=> toast('출고 내역 조회 실패: ' + err.message, true));
+}
+
+function prevDayStr(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()-1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function shippedQtyForOrder(o){
+  return [1,2,3,4,5].reduce((s,n)=> s + shippedQty(o,n), 0);
+}
+
+function sumLogQtyUpTo(list, product, dateStr){
+  return list.filter(l=> l.productName===product && l.date <= dateStr).reduce((a,l)=>a+(l.qty||0),0);
+}
+function sumLogQtyOnDay(list, product, dateStr){
+  return list.filter(l=> l.productName===product && l.date === dateStr).reduce((a,l)=>a+(l.qty||0),0);
+}
+function sumShippedUpTo(product, dateStr){
+  return allOrdersForInventory.filter(o=> o.productName===product && o.date <= dateStr).reduce((a,o)=>a+shippedQtyForOrder(o),0);
+}
+function sumShippedOnDay(product, dateStr){
+  return allOrdersForInventory.filter(o=> o.productName===product && o.date === dateStr).reduce((a,o)=>a+shippedQtyForOrder(o),0);
+}
+function stockAsOf(product, dateStr){
+  return sumLogQtyUpTo(allReceivingLogs, product, dateStr) + sumLogQtyUpTo(allCleaningLogs, product, dateStr) - sumShippedUpTo(product, dateStr);
 }
 
 function renderInventoryTable(){
   const tbody = document.getElementById('invStockRows');
   if(!tbody) return;
   const search = (document.getElementById('invSearchInput').value||'').trim().toLowerCase();
-  let list = PRODUCTS_SEED.map(p=>({ code: p.code, name: p.name, stock: currentInventory[p.name] !== undefined ? currentInventory[p.name] : 0 }));
+  const viewDate = document.getElementById('invViewDate').value || todayStr();
+  const prevDate = prevDayStr(viewDate);
+  let list = PRODUCTS_SEED.map(p=>{
+    const prevStock = stockAsOf(p.name, prevDate);
+    const outQty = sumShippedOnDay(p.name, viewDate);
+    const inQty = sumLogQtyOnDay(allReceivingLogs, p.name, viewDate);
+    const washQty = sumLogQtyOnDay(allCleaningLogs, p.name, viewDate);
+    const nowStock = prevStock - outQty + inQty + washQty;
+    return { code: p.code, name: p.name, prevStock, outQty, inQty, washQty, nowStock };
+  });
   if(search){
     list = list.filter(r=> r.code.toLowerCase().includes(search) || (r.name||'').toLowerCase().includes(search));
   }
   tbody.innerHTML = '';
   if(list.length === 0){
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">해당 조건의 제품이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">해당 조건의 제품이 없습니다.</td></tr>';
     return;
   }
   list.forEach(r=>{
     const tr = document.createElement('tr');
-    const warn = r.stock < 0 ? ' style="color:var(--red); font-weight:700;"' : '';
-    tr.innerHTML = '<td>'+r.code+'</td><td>'+(r.name||'-')+'</td><td'+warn+'><span class="vqty '+(r.stock<0?'pending':'done')+'" data-name="'+r.name.replace(/"/g,'&quot;')+'" data-stock="'+r.stock+'" title="눌러서 재고 직접 수정">'+r.stock+'</span></td>';
+    const warn = r.nowStock < 0 ? ' style="color:var(--red); font-weight:700;"' : '';
+    tr.innerHTML = '<td>'+r.code+'</td><td>'+(r.name||'-')+'</td><td>'+r.prevStock+'</td><td>'+r.outQty+'</td><td>'+r.inQty+'</td><td>'+r.washQty+'</td>'+
+      '<td'+warn+'><span class="vqty '+(r.nowStock<0?'pending':'done')+'" data-name="'+r.name.replace(/"/g,'&quot;')+'" data-code="'+r.code+'" title="눌러서 이 날짜에 재고 조정">'+r.nowStock+'</span></td>';
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('.vqty').forEach(el=>{
     el.addEventListener('click', async ()=>{
       if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 재고를 수정할 수 있습니다.', true); return; }
       const name = el.dataset.name;
-      const current = Number(el.dataset.stock)||0;
-      const input = prompt('"'+name+'"의 재고를 직접 입력하세요', current);
+      const code = el.dataset.code;
+      const input = prompt('"'+name+'"의 '+viewDate+' 재고를 조정합니다. 더하거나 뺄 수량을 입력하세요 (예: 10 또는 -5)', '0');
       if(input === null) return;
-      const val = Number(input);
-      if(isNaN(val)){ toast('올바른 숫자를 입력해주세요.', true); return; }
-      try{ await db.collection('inventory').doc(name).set({ stock: val }, { merge: true }); }
-      catch(e){ toast('수정 실패: ' + e.message, true); }
+      const delta = Number(input);
+      if(isNaN(delta) || delta === 0){ toast('올바른 숫자를 입력해주세요.', true); return; }
+      try{
+        await db.collection('receivingLogs').add({
+          date: viewDate, productCode: code, productName: name, qty: delta, note: '재고 조정',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: currentEmployeeNo || ''
+        });
+        toast('재고 조정 완료');
+      }catch(e){ toast('조정 실패: ' + e.message, true); }
     });
   });
 }
 document.getElementById('invSearchInput').addEventListener('input', renderInventoryTable);
+document.getElementById('invViewDate').addEventListener('change', renderInventoryTable);
 
 function listenInventoryLogs(){
   db.collection('receivingLogs').onSnapshot(snap=>{
-    currentInvLogs = currentInvLogs.filter(l=>l.__coll!=='receivingLogs');
-    snap.forEach(doc=> currentInvLogs.push({ id: doc.id, __coll:'receivingLogs', type:'입고', ...doc.data() }));
+    allReceivingLogs = [];
+    snap.forEach(doc=> allReceivingLogs.push({ id: doc.id, ...doc.data() }));
+    renderInventoryTable();
     renderInventoryLogs();
   });
   db.collection('cleaningLogs').onSnapshot(snap=>{
-    currentInvLogs = currentInvLogs.filter(l=>l.__coll!=='cleaningLogs');
-    snap.forEach(doc=> currentInvLogs.push({ id: doc.id, __coll:'cleaningLogs', type:'세척', ...doc.data() }));
+    allCleaningLogs = [];
+    snap.forEach(doc=> allCleaningLogs.push({ id: doc.id, ...doc.data() }));
+    renderInventoryTable();
     renderInventoryLogs();
   });
 }
@@ -1396,7 +1437,9 @@ function listenInventoryLogs(){
 function renderInventoryLogs(){
   const tbody = document.getElementById('invLogRows');
   if(!tbody) return;
-  const sorted = currentInvLogs.slice().sort((a,b)=>{
+  const combined = allReceivingLogs.map(l=>({...l, type:'입고', __coll:'receivingLogs'}))
+    .concat(allCleaningLogs.map(l=>({...l, type:'세척', __coll:'cleaningLogs'})));
+  const sorted = combined.sort((a,b)=>{
     const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
     const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
     return tb - ta;
@@ -1408,20 +1451,17 @@ function renderInventoryLogs(){
   }
   sorted.forEach(l=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td>'+l.date+'</td><td>'+l.type+'</td><td>'+(l.productName||'-')+'</td><td>'+l.qty+'</td>'+
-      '<td><button class="btn-danger" data-coll="'+l.__coll+'" data-id="'+l.id+'" data-qty="'+l.qty+'" data-name="'+(l.productName||'').replace(/"/g,'&quot;')+'">삭제</button></td>';
+    tr.innerHTML = '<td>'+l.date+'</td><td>'+l.type+(l.note?' ('+l.note+')':'')+'</td><td>'+(l.productName||'-')+'</td><td>'+l.qty+'</td>'+
+      '<td><button class="btn-danger" data-coll="'+l.__coll+'" data-id="'+l.id+'">삭제</button></td>';
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('.btn-danger').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 삭제할 수 있습니다.', true); return; }
-      if(!confirm('이 내역을 삭제할까요? (재고에서도 되돌려집니다)')) return;
-      const coll = btn.dataset.coll, id = btn.dataset.id, qty = Number(btn.dataset.qty)||0, name = btn.dataset.name;
+      if(!confirm('이 내역을 삭제할까요?')) return;
+      const coll = btn.dataset.coll, id = btn.dataset.id;
       try{
         await db.collection(coll).doc(id).delete();
-        if(name){
-          await db.collection('inventory').doc(name).set({ stock: firebase.firestore.FieldValue.increment(-qty) }, { merge: true });
-        }
         toast('삭제 완료');
       }catch(e){ toast('삭제 실패: ' + e.message, true); }
     });
