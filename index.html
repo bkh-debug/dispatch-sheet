@@ -356,7 +356,7 @@
       <h2>출고 현황</h2>
       <div class="totals" id="reportTotalsTop" style="grid-template-columns:repeat(2,1fr); margin-top:0; margin-bottom:18px;">
         <div class="box teal" style="padding:18px 20px;"><div class="lbl">일일 총출고금액</div><div class="val" id="reportDailyTotal" style="font-size:24px;">0</div></div>
-        <div class="box amber" style="padding:18px 20px;"><div class="lbl">누적출고금액</div><div class="val" id="reportCumulativeTotal" style="font-size:24px;">0</div></div>
+        <div class="box amber" style="padding:18px 20px;"><div class="lbl">누적출고금액 (전월25일~당월24일)</div><div class="val" id="reportCumulativeTotal" style="font-size:24px;">0</div></div>
       </div>
       <div class="filter-bar">
         <div>
@@ -516,6 +516,9 @@ const PRICE_MAP = {"001":{"group":"A","price":83.54,"category":"BOX"},"008":{"gr
 
 /* 재고현황표(EP1 시트)의 실제 순서 - 재고현황 화면에서 이 순서대로 표시돼요 */
 const INVENTORY_ORDER = ["001", "008", "008.1", "009", "011", "011.2", "011.4", "151", "012", "013", "013.1", "014", "014.1", "015.1", "015", "016", "016.1", "105", "115", "115.1", "123", "124", "149", "321", "431", "432", "115.2", "011.5", "NPC회색", "4315(검정)", "3215(검정)", "4328(검정)", "4315(민트)", "6429", "3215(회색)", "4315(회색)", "4328(회색)", "6428", "4315(파랑)", "156.1", "148", "150", "147", "100", "048", "052", "053", "054", "058", "097", "137", "307", "049", "051", "118", "119", "120", "121", "122", "133", "134", "135", "211.1", "309", "312", "146", "322", "136", "138", "049.1", "315", "318", "319", "320", "320.1", "321.1", "082", "125", "126", "127", "130", "158.1", "023", "024", "027", "077", "081", "102", "129", "104", "162.1", "164", "174", "178", "184", "189", "189.1", "200", "202", "203", "204", "212", "213", "214", "215", "216", "217", "218", "219", "220", "221", "221.1", "221.2", "221.3", "213.1", "214.1", "216.1", "217.1", "218.1", "198.1", "199.1", "223", "224", "225", "226", "226.1", "227", "229", "230.1", "231", "233.2", "233.3", "234.1", "234.2", "235", "236", "237", "238", "239", "240", "241", "244", "243", "245", "055", "056", "057", "101", "141", "142", "144", "002.1", "002.2", "112.2", "299", "299.2", "308.1", "324", "325", "326", "310", "191", "192", "046", "047", "179", "181", "182", "183", "303", "311", "306", "313", "314.1", "316", "076", "116", "116.1", "304", "302", "038.2", "038.3", "SLH방청유지", "012910", "012960", "017960", "012870", "012980", "012990", "017970", "cap1", "lid", "pallet", "blister", "sleeve", "DIF", "PEU", "볼세척품"];
+
+/* 재고현황표(EP1 시트) Item 구분 - 병합된 셀은 같은 구분으로 채워져 있어요 */
+const ITEM_MAP = {"001":"BOX","008":"BOX","008.1":"BOX","009":"BOX","011":"BOX","011.2":"BOX","011.4":"BOX","151":"BOX","012":"BOX","013":"BOX","013.1":"BOX","014":"BOX","014.1":"BOX","015.1":"BOX","015":"BOX","016":"BOX","016.1":"BOX","105":"BOX","115":"BOX","115.1":"BOX","123":"BOX","124":"BOX","149":"BOX","321":"BOX","431":"BOX","432":"BOX","115.2":"BOX","011.5":"BOX","NPC회색":"BOX","4315(검정)":"표준박스","3215(검정)":"표준박스","4328(검정)":"표준박스","4315(민트)":"표준박스","6429":"표준박스","3215(회색)":"표준박스","4315(회색)":"표준박스","4328(회색)":"표준박스","6428":"표준박스","4315(파랑)":"표준박스","156.1":"튜브 관","148":"투명덮개","150":"투명덮개","147":"투명덮개","100":"투명덮개","048":"단프라덮개","052":"단프라덮개","053":"단프라덮개","054":"단프라덮개","058":"단프라덮개","097":"단프라덮개","137":"단프라덮개","307":"단프라덮개","049":"단프라간지","051":"단프라간지","118":"단프라간지","119":"단프라간지","120":"단프라간지","121":"단프라간지","122":"단프라간지","133":"단프라간지","134":"단프라간지","135":"단프라간지","211.1":"단프라간지","309":"단프라간지","312":"단프라간지","146":"단프라간지","322":"단프라간지","136":"단프라간지","138":"단프라간지","049.1":"단프라간지","315":"단프라간지","318":"단프라간지","319":"단프라간지","320":"단프라간지","320.1":"단프라간지","321.1":"단프라간지","082":"Tray","125":"Tray","126":"Tray","127":"Tray","130":"Tray","158.1":"Tray","023":"Tray","024":"Tray","027":"Tray","077":"Tray","081":"Tray","102":"Tray","129":"Tray","104":"Tray","162.1":"Tray","164":"Tray","174":"Tray","178":"Tray","184":"Tray","189":"Tray","189.1":"Tray","200":"Tray","202":"Tray","203":"Tray","204":"Tray","212":"Tray","213":"Tray","214":"Tray","215":"Tray","216":"Tray","217":"Tray","218":"Tray","219":"Tray","220":"Tray","221":"Tray","221.1":"Tray","221.2":"Tray","221.3":"Tray","213.1":"Tray","214.1":"Tray","216.1":"Tray","217.1":"Tray","218.1":"Tray","198.1":"Tray","199.1":"Tray","223":"Tray","224":"Tray","225":"Tray","226":"Tray","226.1":"Tray","227":"Tray","229":"Tray","230.1":"Tray","231":"Tray","233.2":"Tray","233.3":"Tray","234.1":"Tray","234.2":"Tray","235":"Tray","236":"Tray","237":"Tray","238":"Tray","239":"Tray","240":"Tray","241":"Tray","244":"Tray","243":"Tray","245":"Tray","055":"평판시트","056":"평판시트","057":"평판시트","101":"평판시트","141":"평판시트","142":"평판시트","144":"평판시트","002.1":"종이","002.2":"종이","112.2":"종이","299":"종이","299.2":"종이","308.1":"종이","324":"종이","325":"종이","326":"종이","310":"종이","191":"종이","192":"종이","046":"종이","047":"종이","179":"종이","181":"종이","182":"종이","183":"종이","303":"종이","311":"종이","306":"종이","313":"종이","314.1":"종이","316":"종이","076":"종이","116":"종이","116.1":"종이","304":"종이","302":"종이","038.2":"방청유지","038.3":"방청유지","SLH방청유지":"방청유지","012910":"AAM","012960":"AAM","017960":"AAM","012870":"AAM","012980":"AAM","012990":"AAM","017970":"AAM","cap1":"감속기","lid":"감속기","pallet":"감속기","blister":"감속기","sleeve":"감속기","DIF":"감속기","PEU":"감속기","볼세척품":"감속기"};
 
 let db = null;
 let productsMap = {};
@@ -921,13 +924,25 @@ const CATEGORY_ORDER = ['BOX','Plug','Tray','기어박스','단프라','외주�
 let currentCategoryFilter = '';
 let expandedGroups = new Set();
 
+function billingCycleStart(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = d.getDate();
+  // 매월 25일에 새 정산 주기가 시작돼요 (전월 25일 ~ 당월 24일)
+  if(day < 25){
+    d.setMonth(d.getMonth()-1);
+  }
+  d.setDate(25);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
 function renderReport(){
   const tbody = document.getElementById('reportGroupRows');
   if(!tbody) return;
   const viewDate = document.getElementById('viewDate').value || todayStr();
+  const cycleStart = billingCycleStart(viewDate);
 
   const dailyOrders = allOrdersForReport.filter(o=> o.date === viewDate);
-  const cumulativeOrders = allOrdersForReport.filter(o=> o.date <= viewDate);
+  const cumulativeOrders = allOrdersForReport.filter(o=> o.date >= cycleStart && o.date <= viewDate);
 
   const catTotals = {};
   dailyOrders.forEach(o=>{
@@ -1388,7 +1403,7 @@ function renderInventoryTable(){
     const inQty = sumLogQtyOnDay(allReceivingLogs, name, viewDate);
     const washQty = sumLogQtyOnDay(allCleaningLogs, name, viewDate);
     const nowStock = prevStock - outQty + inQty + washQty;
-    const item = (PRICE_MAP[name] && PRICE_MAP[name].category) || '기타';
+    const item = ITEM_MAP[name] || '기타';
     return { code: p.code, item, name: p.name, prevStock, outQty, inQty, washQty, nowStock };
   });
   if(search){
@@ -1402,11 +1417,14 @@ function renderInventoryTable(){
   list.forEach(r=>{
     const tr = document.createElement('tr');
     const warn = r.nowStock < 0 ? ' style="color:var(--red); font-weight:700;"' : '';
-    tr.innerHTML = '<td>'+r.item+'</td><td>'+(r.name||'-')+'</td><td>'+r.prevStock+'</td><td>'+r.outQty+'</td><td>'+r.inQty+'</td><td>'+r.washQty+'</td>'+
-      '<td'+warn+'><span class="vqty '+(r.nowStock<0?'pending':'done')+'" data-name="'+r.name.replace(/"/g,'&quot;')+'" data-code="'+r.code+'" title="눌러서 이 날짜에 재고 조정">'+r.nowStock+'</span></td>';
+    const nameAttr = r.name.replace(/"/g,'&quot;');
+    tr.innerHTML = '<td>'+r.item+'</td><td>'+(r.name||'-')+'</td><td>'+r.prevStock+'</td><td>'+r.outQty+'</td>'+
+      '<td><span class="vqty done inv-in" data-name="'+nameAttr+'" data-code="'+r.code+'" title="눌러서 이 날짜의 입고 수량 추가">'+r.inQty+'</span></td>'+
+      '<td><span class="vqty done inv-wash" data-name="'+nameAttr+'" data-code="'+r.code+'" title="눌러서 이 날짜의 세척 수량 추가">'+r.washQty+'</span></td>'+
+      '<td'+warn+'><span class="vqty '+(r.nowStock<0?'pending':'done')+' inv-adjust" data-name="'+nameAttr+'" data-code="'+r.code+'" title="눌러서 이 날짜에 재고 조정">'+r.nowStock+'</span></td>';
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('.vqty').forEach(el=>{
+  tbody.querySelectorAll('.inv-adjust').forEach(el=>{
     el.addEventListener('click', async ()=>{
       if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 재고를 수정할 수 있습니다.', true); return; }
       const name = el.dataset.name;
@@ -1423,6 +1441,44 @@ function renderInventoryTable(){
         });
         toast('재고 조정 완료');
       }catch(e){ toast('조정 실패: ' + e.message, true); }
+    });
+  });
+  tbody.querySelectorAll('.inv-in').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 입력할 수 있습니다.', true); return; }
+      const name = el.dataset.name;
+      const code = el.dataset.code;
+      const input = prompt('"'+name+'"의 '+viewDate+' 입고 수량을 추가로 입력하세요', '');
+      if(input === null) return;
+      const qty = Number(input);
+      if(isNaN(qty) || qty === 0){ toast('올바른 숫자를 입력해주세요.', true); return; }
+      try{
+        await db.collection('receivingLogs').add({
+          date: viewDate, productCode: code, productName: name, qty, note: '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: currentEmployeeNo || ''
+        });
+        toast('입고 등록 완료');
+      }catch(e){ toast('입력 실패: ' + e.message, true); }
+    });
+  });
+  tbody.querySelectorAll('.inv-wash').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 입력할 수 있습니다.', true); return; }
+      const name = el.dataset.name;
+      const code = el.dataset.code;
+      const input = prompt('"'+name+'"의 '+viewDate+' 세척 수량을 추가로 입력하세요', '');
+      if(input === null) return;
+      const qty = Number(input);
+      if(isNaN(qty) || qty === 0){ toast('올바른 숫자를 입력해주세요.', true); return; }
+      try{
+        await db.collection('cleaningLogs').add({
+          date: viewDate, productCode: code, productName: name, qty, note: '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: currentEmployeeNo || ''
+        });
+        toast('세척 등록 완료');
+      }catch(e){ toast('입력 실패: ' + e.message, true); }
     });
   });
 }
