@@ -432,7 +432,7 @@
       </label>
       <div style="overflow-x:auto; max-height:320px; overflow-y:auto;">
         <table>
-          <thead><tr><th>제품명</th><th>출고</th><th>입고</th><th>세척</th></tr></thead>
+          <thead><tr><th>제품명</th><th>전일재고</th><th>출고</th><th>입고</th><th>세척</th></tr></thead>
           <tbody id="ep1PreviewRows"></tbody>
         </table>
       </div>
@@ -1468,12 +1468,13 @@ document.getElementById('ep1FileInput').addEventListener('change', (e)=>{
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true, range: ws['!ref'] });
 
       // '전일재고' 등 헤더가 있는 행을 찾아서 열 위치를 자동으로 파악
-      let headerRowIdx = -1, colCtrl=-1, colOut=-1, colIn=-1, colWash=-1;
+      let headerRowIdx = -1, colCtrl=-1, colPrev=-1, colOut=-1, colIn=-1, colWash=-1;
       const norm = s => String(s).replace(/\s+/g,'');
       for(let r=0; r<Math.min(rows.length, 10); r++){
         const idx = rows[r].findIndex(v=> norm(v)==='Ctrl.No.' || norm(v)==='CtrlNo.' || norm(v)==='CtrlNo');
         if(idx !== -1){
           headerRowIdx = r; colCtrl = idx;
+          colPrev = rows[r].findIndex(v=> norm(v)==='전일재고');
           colOut = rows[r].findIndex(v=> norm(v)==='출고');
           colIn = rows[r].findIndex(v=> norm(v)==='입고');
           colWash = rows[r].findIndex(v=> norm(v)==='세척');
@@ -1488,11 +1489,12 @@ document.getElementById('ep1FileInput').addEventListener('change', (e)=>{
         if(!row) continue;
         const ctrl = String(row[colCtrl]||'').trim();
         if(!ctrl || productsByName[ctrl] === undefined) continue;
+        const prevStock = colPrev !== -1 ? Number(row[colPrev])||0 : null;
         const outQty = Number(row[colOut])||0;
         const inQty = Number(row[colIn])||0;
         const washQty = Number(row[colWash])||0;
-        if(outQty===0 && inQty===0 && washQty===0) continue;
-        ep1ImportRows.push({ name: ctrl, code: productsByName[ctrl], outQty, inQty, washQty });
+        if(prevStock===null && outQty===0 && inQty===0 && washQty===0) continue;
+        ep1ImportRows.push({ name: ctrl, code: productsByName[ctrl], prevStock, outQty, inQty, washQty });
       }
 
       if(ep1ImportRows.length === 0){ toast('가져올 재고/출고 내역을 찾지 못했습니다.', true); return; }
@@ -1511,7 +1513,7 @@ document.getElementById('ep1FileInput').addEventListener('change', (e)=>{
       tbody.innerHTML = '';
       ep1ImportRows.forEach(r=>{
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td>'+(r.name||'-')+'</td><td>'+r.outQty+'</td><td>'+r.inQty+'</td><td>'+r.washQty+'</td>';
+        tr.innerHTML = '<td>'+(r.name||'-')+'</td><td>'+(r.prevStock===null?'-':r.prevStock)+'</td><td>'+r.outQty+'</td><td>'+r.inQty+'</td><td>'+r.washQty+'</td>';
         tbody.appendChild(tr);
       });
       document.getElementById('ep1PreviewSummary').textContent = ep1ImportRows.length + '건 발견됨';
@@ -1543,22 +1545,36 @@ document.getElementById('confirmEp1Import').addEventListener('click', async ()=>
   try{
     if(shouldReplace){
       btn.textContent = '기존 기록 삭제 중...';
+      const targetDates = [date, prevDayStr(date)];
       for(const coll of ['orders','receivingLogs','cleaningLogs']){
-        const existing = await db.collection(coll).where('date','==',date).get();
-        const docs = existing.docs.filter(d=> d.data().source === 'ep1');
-        if(docs.length > 0){
-          for(let i=0; i<docs.length; i+=400){
-            const delBatch = db.batch();
-            docs.slice(i, i+400).forEach(d=> delBatch.delete(d.ref));
-            await delBatch.commit();
+        for(const d of targetDates){
+          const existing = await db.collection(coll).where('date','==',d).get();
+          const docs = existing.docs.filter(doc=> doc.data().source === 'ep1');
+          if(docs.length > 0){
+            for(let i=0; i<docs.length; i+=400){
+              const delBatch = db.batch();
+              docs.slice(i, i+400).forEach(doc=> delBatch.delete(doc.ref));
+              await delBatch.commit();
+            }
           }
         }
       }
       btn.textContent = '가져오는 중...';
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+    const prevDate = prevDayStr(date);
     let batch1 = db.batch();
     let opCount = 0;
     for(const r of ep1ImportRows){
+      if(r.prevStock !== null){
+        const computedPrev = stockAsOf(r.name, prevDate);
+        const diff = r.prevStock - computedPrev;
+        if(diff !== 0){
+          const ref = db.collection('receivingLogs').doc();
+          batch1.set(ref, { date: prevDate, productCode: r.code, productName: r.name, qty: diff, note: 'EP1 전일재고 보정', source: 'ep1', createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentEmployeeNo || '' });
+          opCount++;
+        }
+      }
       if(r.outQty > 0){
         const ref = db.collection('orders').doc();
         batch1.set(ref, {
