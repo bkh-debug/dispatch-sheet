@@ -417,15 +417,16 @@
     <button class="btn-ghost" id="backHomeFromInventory" style="margin-bottom:16px;">← 홈</button>
 
     <div class="master-panel" id="ep1PreviewPanel" style="display:none; border-color:var(--teal);">
+      <div style="background:rgba(240,168,40,0.12); border:1px solid var(--amber); border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <label style="display:block; font-size:14px; font-weight:700; color:var(--amber); margin-bottom:6px;">⚠️ 적용할 날짜를 꼭 확인하세요</label>
+        <input type="date" id="ep1TargetDate" style="width:auto; display:inline-block; padding:8px 12px; font-size:15px; font-weight:700;">
+      </div>
       <div class="master-panel-head">
         <strong>재고/출고 엑셀(EP1) 가져오기 미리보기</strong>
         <span style="color:var(--text-dim); font-size:12px;" id="ep1PreviewSummary"></span>
         <button class="btn-ghost" id="cancelEp1Import" style="margin-left:auto; padding:4px 10px; font-size:12px;">취소</button>
         <button class="btn-primary" id="confirmEp1Import" style="width:auto; margin-top:0; padding:8px 16px;">이 내용대로 가져오기</button>
       </div>
-      <label style="display:block; font-size:13px; color:var(--text-dim); margin-bottom:10px;">
-        적용할 날짜: <input type="date" id="ep1TargetDate" style="width:auto; display:inline-block; padding:6px 10px;">
-      </label>
       <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); margin-bottom:12px; cursor:pointer;">
         <input type="checkbox" id="ep1ReplaceExisting" checked style="width:auto;">
         가져오기 전에 이 날짜의 기존 출고/입고/세척 기록 먼저 삭제 (중복 방지, 재업로드 시 권장)
@@ -1540,6 +1541,7 @@ document.getElementById('confirmEp1Import').addEventListener('click', async ()=>
   if(!db){ toast('먼저 Firebase 설정을 완료해주세요.', true); return; }
   if(ep1ImportRows.length === 0) return;
   const date = document.getElementById('ep1TargetDate').value || todayStr();
+  if(!confirm(date + ' 날짜로 등록합니다. 날짜가 맞나요?')) return;
   const shouldReplace = document.getElementById('ep1ReplaceExisting').checked;
   const btn = document.getElementById('confirmEp1Import');
   btn.disabled = true; btn.textContent = '가져오는 중...';
@@ -1599,7 +1601,7 @@ document.getElementById('confirmEp1Import').addEventListener('click', async ()=>
       if(opCount >= 380){ await batch1.commit(); batch1 = db.batch(); opCount = 0; }
     }
     if(opCount > 0) await batch1.commit();
-    toast(ep1ImportRows.length + '개 제품의 재고/출고 데이터를 가져왔습니다.');
+    toast(date + ' 날짜로 ' + ep1ImportRows.length + '개 제품의 재고/출고 데이터를 가져왔습니다.');
     ep1ImportRows = [];
     document.getElementById('ep1PreviewPanel').style.display = 'none';
   }catch(e){
