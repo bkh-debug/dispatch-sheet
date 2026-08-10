@@ -443,8 +443,9 @@
         <div class="panel" id="invFormPanel">
           <h2>입고 / 세척 등록</h2>
 
-          <button class="btn-ghost" id="ep1ImportBtn" style="width:100%; margin-bottom:16px;">📄 재고/출고 엑셀(EP1) 업로드</button>
+          <button class="btn-ghost" id="ep1ImportBtn" style="width:100%; margin-bottom:10px;">📄 재고/출고 엑셀(EP1) 업로드</button>
           <input type="file" id="ep1FileInput" accept=".xlsx,.xls" style="display:none;">
+          <button class="btn-danger" id="resetInventoryBtn" style="width:100%; margin-bottom:16px; padding:10px; font-size:13px;">🗑 재고 데이터 전체 초기화 (입고/세척 기록만, 출고현황은 유지)</button>
 
           <label>날짜</label>
           <input type="date" id="invDate">
@@ -1605,6 +1606,32 @@ document.getElementById('confirmEp1Import').addEventListener('click', async ()=>
     toast('가져오기 실패: ' + e.message, true);
   }
   btn.disabled = false; btn.textContent = '이 내용대로 가져오기';
+});
+
+document.getElementById('resetInventoryBtn').addEventListener('click', async ()=>{
+  if(!db){ toast('먼저 Firebase 설정을 완료해주세요.', true); return; }
+  if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 초기화할 수 있습니다.', true); return; }
+  const input = prompt('재고 데이터(입고/세척 기록)를 전부 삭제합니다. 출고현황은 그대로 유지돼요.\n정말 진행하시려면 "초기화"라고 입력하세요.');
+  if(input !== '초기화'){ toast('입력이 일치하지 않아 취소되었습니다.'); return; }
+  const btn = document.getElementById('resetInventoryBtn');
+  btn.disabled = true; btn.textContent = '초기화 중...';
+  try{
+    for(const coll of ['receivingLogs','cleaningLogs']){
+      let remaining = true;
+      while(remaining){
+        const snap = await db.collection(coll).limit(400).get();
+        if(snap.empty){ remaining = false; break; }
+        const delBatch = db.batch();
+        snap.docs.forEach(d=> delBatch.delete(d.ref));
+        await delBatch.commit();
+        if(snap.docs.length < 400) remaining = false;
+      }
+    }
+    toast('재고 데이터를 초기화했습니다.');
+  }catch(e){
+    toast('초기화 실패: ' + e.message, true);
+  }
+  btn.disabled = false; btn.textContent = '🗑 재고 데이터 전체 초기화 (입고/세척 기록만, 출고현황은 유지)';
 });
 
 function listenInventory(){
