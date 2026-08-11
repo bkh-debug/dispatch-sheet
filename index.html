@@ -427,13 +427,14 @@
         <button class="btn-ghost" id="cancelEp1Import" style="margin-left:auto; padding:4px 10px; font-size:12px;">취소</button>
         <button class="btn-primary" id="confirmEp1Import" style="width:auto; margin-top:0; padding:8px 16px;">이 내용대로 가져오기</button>
       </div>
+      <div class="hint" style="margin-bottom:10px;">출고 열은 참고용으로만 보여드려요 — 출고현황에는 새로 등록하지 않아요 (이미 출고지시서로 등록된 값과 중복되지 않도록). 입고/세척과 전일재고 보정만 실제로 반영돼요.</div>
       <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); margin-bottom:12px; cursor:pointer;">
         <input type="checkbox" id="ep1ReplaceExisting" checked style="width:auto;">
-        가져오기 전에 이 날짜의 기존 출고/입고/세척 기록 먼저 삭제 (중복 방지, 재업로드 시 권장)
+        가져오기 전에 이 날짜의 기존 입고/세척 기록 먼저 삭제 (중복 방지, 재업로드 시 권장)
       </label>
       <div style="overflow-x:auto; max-height:320px; overflow-y:auto;">
         <table>
-          <thead><tr><th>제품명</th><th>전일재고</th><th>출고</th><th>입고</th><th>세척</th></tr></thead>
+          <thead><tr><th>제품명</th><th>전일재고</th><th>출고(참고)</th><th>입고</th><th>세척</th></tr></thead>
           <tbody id="ep1PreviewRows"></tbody>
         </table>
       </div>
@@ -1549,7 +1550,7 @@ document.getElementById('confirmEp1Import').addEventListener('click', async ()=>
     if(shouldReplace){
       btn.textContent = '기존 기록 삭제 중...';
       const targetDates = [date, prevDayStr(date)];
-      for(const coll of ['orders','receivingLogs','cleaningLogs']){
+      for(const coll of ['receivingLogs','cleaningLogs']){
         for(const d of targetDates){
           const existing = await db.collection(coll).where('date','==',d).get();
           const docs = existing.docs.filter(doc=> doc.data().source === 'ep1');
@@ -1578,16 +1579,6 @@ document.getElementById('confirmEp1Import').addEventListener('click', async ()=>
           opCount++;
         }
       }
-      if(r.outQty > 0){
-        const ref = db.collection('orders').doc();
-        batch1.set(ref, {
-          date, productCode: r.code, productName: r.name,
-          v1: r.outQty, v2:0, v3:0, v4:0, v5:0, qty: r.outQty,
-          v1Done:false, v2Done:false, v3Done:false, v4Done:false, v5Done:false,
-          note: 'EP1 업로드', source: 'ep1', createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentEmployeeNo || ''
-        });
-        opCount++;
-      }
       if(r.inQty > 0){
         const ref = db.collection('receivingLogs').doc();
         batch1.set(ref, { date, productCode: r.code, productName: r.name, qty: r.inQty, note: 'EP1 업로드', source: 'ep1', createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentEmployeeNo || '' });
@@ -1601,7 +1592,7 @@ document.getElementById('confirmEp1Import').addEventListener('click', async ()=>
       if(opCount >= 380){ await batch1.commit(); batch1 = db.batch(); opCount = 0; }
     }
     if(opCount > 0) await batch1.commit();
-    toast(date + ' 날짜로 ' + ep1ImportRows.length + '개 제품의 재고/출고 데이터를 가져왔습니다.');
+    toast(date + ' 날짜로 ' + ep1ImportRows.length + '개 제품의 재고 데이터(전일재고/입고/세척)를 가져왔습니다.');
     ep1ImportRows = [];
     document.getElementById('ep1PreviewPanel').style.display = 'none';
   }catch(e){
