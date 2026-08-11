@@ -450,6 +450,14 @@
           <button class="btn-danger" id="resetInventoryBtn" style="width:100%; margin-bottom:10px; padding:10px; font-size:13px;">🗑 재고 데이터 초기화 (입고/세척 기록만, 출고현황은 유지)</button>
           <button class="btn-danger" id="resetAllBtn" style="width:100%; margin-bottom:16px; padding:10px; font-size:13px;">🗑🗑 전체 초기화 (출고현황 + 입고/세척 전부 삭제)</button>
 
+          <div style="background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:16px;">
+            <label style="display:block; font-size:12.5px; color:var(--text-dim); margin-top:0; margin-bottom:6px;">재고 계산 시작일 <span style="color:var(--text-dim); font-weight:400;">(이 날짜 이전 출고지시서는 재고에 영향 없음)</span></label>
+            <div style="display:flex; gap:8px;">
+              <input type="date" id="inventoryStartDateInput" style="margin-top:0;">
+              <button class="btn-ghost" id="saveInventoryStartDate" style="width:auto; padding:8px 14px; font-size:13px;">저장</button>
+            </div>
+          </div>
+
           <label>날짜</label>
           <input type="date" id="invDate">
 
@@ -585,6 +593,7 @@ function initFirebase(){
     listenOrders();
     listenInventory();
     listenInventoryLogs();
+    listenInventoryStartDate();
     listenLocationOrder();
     if(document.body.classList.contains('master-mode')) listenAllOrdersForReport();
   }catch(e){
@@ -1381,6 +1390,7 @@ try{
 document.getElementById('fDate').value = todayStr();
 document.getElementById('invDate').value = todayStr();
 document.getElementById('invViewDate').value = todayStr();
+document.getElementById('inventoryStartDateInput').value = inventoryStartDate;
 document.getElementById('viewDate').value = todayStr();
 PRODUCTS_SEED.forEach(p=>{ productsMap[p.code] = p.name; if(p.name && !(p.name in productsByName)) productsByName[p.name] = p.code; });
 initFirebase();
@@ -1668,16 +1678,44 @@ function prevDayStr(dateStr){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
+let inventoryStartDate = '2026-08-10';
+
+function listenInventoryStartDate(){
+  db.collection('config').doc('inventoryStartDate').onSnapshot(doc=>{
+    if(doc.exists && doc.data().date){
+      inventoryStartDate = doc.data().date;
+      renderInventoryTable();
+    }
+    const input = document.getElementById('inventoryStartDateInput');
+    if(input && !input.matches(':focus')) input.value = inventoryStartDate;
+  });
+}
+
+document.getElementById('saveInventoryStartDate').addEventListener('click', async ()=>{
+  if(!db){ toast('먼저 Firebase 설정을 완료해주세요.', true); return; }
+  if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 변경할 수 있습니다.', true); return; }
+  const val = document.getElementById('inventoryStartDateInput').value;
+  if(!val){ toast('날짜를 선택해주세요.', true); return; }
+  try{
+    await db.collection('config').doc('inventoryStartDate').set({ date: val });
+    toast('재고 계산 시작일을 ' + val + '로 저장했습니다.');
+  }catch(e){
+    toast('저장 실패: ' + e.message, true);
+  }
+});
+
 function sumLogQtyUpTo(list, product, dateStr){
-  return list.filter(l=> l.productName===product && l.date <= dateStr).reduce((a,l)=>a+(l.qty||0),0);
+  return list.filter(l=> l.productName===product && l.date <= dateStr && (l.date >= inventoryStartDate || l.note === 'EP1 전일재고 보정')).reduce((a,l)=>a+(l.qty||0),0);
 }
 function sumLogQtyOnDay(list, product, dateStr){
+  if(dateStr < inventoryStartDate) return 0;
   return list.filter(l=> l.productName===product && l.date === dateStr).reduce((a,l)=>a+(l.qty||0),0);
 }
 function sumShippedUpTo(product, dateStr){
-  return allOrdersForInventory.filter(o=> o.productName===product && o.date <= dateStr).reduce((a,o)=>a+(o.qty||0),0);
+  return allOrdersForInventory.filter(o=> o.productName===product && o.date >= inventoryStartDate && o.date <= dateStr).reduce((a,o)=>a+(o.qty||0),0);
 }
 function sumShippedOnDay(product, dateStr){
+  if(dateStr < inventoryStartDate) return 0;
   return allOrdersForInventory.filter(o=> o.productName===product && o.date === dateStr).reduce((a,o)=>a+(o.qty||0),0);
 }
 function stockAsOf(product, dateStr){
