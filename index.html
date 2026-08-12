@@ -393,13 +393,13 @@
         <table>
           <thead>
             <tr>
-              <th>코드</th><th>제품명</th>
+              <th>코드</th><th>제품명</th><th>재고</th>
               <th>1호차</th><th>2호차</th><th>3호차</th><th>4호차</th><th>추가차량</th>
               <th>합계</th><th>위치/담당자</th><th></th>
             </tr>
           </thead>
           <tbody id="orderRows">
-            <tr class="empty-row"><td colspan="10">해당 날짜의 출고 내역이 없습니다.</td></tr>
+            <tr class="empty-row"><td colspan="11">해당 날짜의 출고 내역이 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
@@ -1142,7 +1142,7 @@ function renderOrders(){
   if(currentCategoryFilter) displayed = displayed.filter(o=> orderCategory(o) === currentCategoryFilter);
   tbody.innerHTML = '';
   if(displayed.length === 0){
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">해당 조건의 출고 내역이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 출고 내역이 없습니다.</td></tr>';
   }else{
     const groupCounts = {};
     displayed.forEach(o=>{ groupCounts[o.note] = (groupCounts[o.note]||0) + 1; });
@@ -1161,7 +1161,7 @@ function renderOrders(){
         toggleTr.className = 'group-toggle-row';
         const arrow = isCollapsed ? '▶' : '▼';
         toggleTr.innerHTML =
-          '<td colspan="10" style="border-top:3px solid '+bColor+';border-left:3px solid '+bColor+';border-right:3px solid '+bColor+';'+(isCollapsed?'border-bottom:3px solid '+bColor+';border-radius:10px;':'border-top-left-radius:10px;border-top-right-radius:10px;')+'background:var(--panel-2); font-weight:700; cursor:pointer; padding:9px 12px;">'+arrow+' '+(o.note||'위치 미지정')+' <span style="color:var(--text-dim); font-weight:400;">('+groupCounts[o.note]+'건)</span></td>';
+          '<td colspan="11" style="border-top:3px solid '+bColor+';border-left:3px solid '+bColor+';border-right:3px solid '+bColor+';'+(isCollapsed?'border-bottom:3px solid '+bColor+';border-radius:10px;':'border-top-left-radius:10px;border-top-right-radius:10px;')+'background:var(--panel-2); font-weight:700; cursor:pointer; padding:9px 12px;">'+arrow+' '+(o.note||'위치 미지정')+' <span style="color:var(--text-dim); font-weight:400;">('+groupCounts[o.note]+'건)</span></td>';
         toggleTr.addEventListener('click', ()=>{
           if(expandedGroups.has(groupKey)) expandedGroups.delete(groupKey);
           else expandedGroups.add(groupKey);
@@ -1174,6 +1174,7 @@ function renderOrders(){
           headerTr.innerHTML =
             '<th class="group-th" style="border-left:3px solid '+bColor+';">코드</th>'+
             '<th class="group-th">제품명</th>'+
+            '<th class="group-th">재고</th>'+
             '<th class="group-th">1호차</th>'+
             '<th class="group-th">2호차</th>'+
             '<th class="group-th">3호차</th>'+
@@ -1201,6 +1202,7 @@ function renderOrders(){
       tr.innerHTML =
         '<td'+firstAttr+'>'+o.productCode+'</td>'+
         '<td'+midAttr+'>'+(o.productName||'-')+'</td>'+
+        '<td style="'+mid+'font-family:var(--font-mono); color:var(--text-dim);">'+liveStockForProduct(o.productName)+'</td>'+
         '<td'+midAttr+'>'+vqtyCell(o,1)+'</td><td'+midAttr+'>'+vqtyCell(o,2)+'</td><td'+midAttr+'>'+vqtyCell(o,3)+'</td><td'+midAttr+'>'+vqtyCell(o,4)+'</td><td'+midAttr+'>'+vqtyCell(o,5)+'</td>'+
         '<td'+midAttr+'>'+o.qty+'</td>'+
         '<td style="font-family:var(--font-body);'+mid+'">'+(o.note||'-')+'</td>'+
@@ -1719,6 +1721,20 @@ function sumShippedOnDay(product, dateStr){
 }
 function stockAsOf(product, dateStr){
   return sumLogQtyUpTo(allReceivingLogs, product, dateStr) + sumLogQtyUpTo(allCleaningLogs, product, dateStr) - sumShippedUpTo(product, dateStr);
+}
+
+// 출고현황에서 보여줄 "출고되기 전 재고" - 어제까지의 재고에 오늘 입고/세척을 더하고,
+// 오늘 이미 출고완료 처리된 수량만큼 뺀 실시간 값이에요. 출고완료 클릭할 때마다 줄어들어요.
+function liveStockForProduct(productName){
+  if(!productName) return 0;
+  const today = todayStr();
+  const yesterday = prevDayStr(today);
+  const base = stockAsOf(productName, yesterday);
+  const todayInOut = sumLogQtyOnDay(allReceivingLogs, productName, today) + sumLogQtyOnDay(allCleaningLogs, productName, today);
+  const todayShippedSoFar = allOrdersForInventory
+    .filter(o=> o.productName===productName && o.date===today)
+    .reduce((a,o)=> a + [1,2,3,4,5].reduce((s,n)=>s+shippedQty(o,n),0), 0);
+  return base + todayInOut - todayShippedSoFar;
 }
 
 function renderInventoryTable(){
