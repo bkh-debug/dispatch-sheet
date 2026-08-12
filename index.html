@@ -559,6 +559,7 @@ const ITEM_MAP = {"001":"BOX","008":"BOX","008.1":"BOX","009":"BOX","011":"BOX",
 
 let db = null;
 let productsMap = {};
+let inventoryStartDate = '2026-08-10';
 let productsByName = {};
 let unsubscribeOrders = null;
 let currentOrders = [];
@@ -1677,8 +1678,6 @@ function prevDayStr(dateStr){
   d.setDate(d.getDate()-1);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-
-let inventoryStartDate = '2026-08-10';
 
 function listenInventoryStartDate(){
   db.collection('config').doc('inventoryStartDate').onSnapshot(doc=>{
