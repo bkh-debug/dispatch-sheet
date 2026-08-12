@@ -1199,10 +1199,12 @@ function renderOrders(){
       const midAttr = mid ? ' style="'+mid+'"' : '';
       const firstAttr = ' style="'+first+'"';
       const lastAttr = ' style="'+last+'"';
+      const stockNow = liveStockForProduct(o.productName);
+      const stockColor = stockNow < o.qty ? 'var(--red)' : 'var(--teal)';
       tr.innerHTML =
         '<td'+firstAttr+'>'+o.productCode+'</td>'+
         '<td'+midAttr+'>'+(o.productName||'-')+'</td>'+
-        '<td style="'+mid+'font-family:var(--font-mono); color:var(--text-dim);">'+liveStockForProduct(o.productName)+'</td>'+
+        '<td style="'+mid+'font-family:var(--font-mono); font-weight:700; color:'+stockColor+';" title="'+(stockNow < o.qty ? '재고 부족 (출고예정 '+o.qty+')' : '재고 충분 (출고예정 '+o.qty+')')+'">'+stockNow+'</td>'+
         '<td'+midAttr+'>'+vqtyCell(o,1)+'</td><td'+midAttr+'>'+vqtyCell(o,2)+'</td><td'+midAttr+'>'+vqtyCell(o,3)+'</td><td'+midAttr+'>'+vqtyCell(o,4)+'</td><td'+midAttr+'>'+vqtyCell(o,5)+'</td>'+
         '<td'+midAttr+'>'+o.qty+'</td>'+
         '<td style="font-family:var(--font-body);'+mid+'">'+(o.note||'-')+'</td>'+
