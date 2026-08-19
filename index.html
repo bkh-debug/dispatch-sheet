@@ -90,6 +90,7 @@
   .grid{ display:grid; grid-template-columns: 300px 1fr; gap:20px; align-items:start;}
   @media (max-width: 880px){ .grid{ grid-template-columns:1fr; } }
   body:not(.master-mode) #formPanel{ display:none; }
+  body:not(.master-mode) #bulkEntryPanel{ display:none; }
   body:not(.master-mode) #invFormPanel{ display:none; }
   body:not(.master-mode) .grid{ grid-template-columns: 1fr; }
   body:not(.master-mode) .btn-danger{ display:none; }
@@ -171,6 +172,12 @@
     text-align:left; font-size:12.5px; text-transform:uppercase; letter-spacing:0.6px;
     color:var(--text-dim); padding:9px 10px; font-weight:600; background:var(--panel-2);
   }
+  .bulk-input{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    padding:7px 8px; border-radius:6px; font-size:13.5px; font-family:var(--font-mono);
+  }
+  .bulk-input:focus{ outline:none; border-color:var(--amber); }
+  #bulkEntryRows td{ padding:6px 6px; }
   .cat-row{ cursor:pointer; transition:background .1s ease; }
   .group-toggle-row td:hover{ opacity:0.85; }
   .cat-row:hover{ background:rgba(255,255,255,0.05); }
@@ -411,6 +418,36 @@
     </div>
 
   </div>
+
+  <div class="panel" id="bulkEntryPanel" style="margin-top:20px;">
+    <h2>출고지시 일괄 입력 (엑셀형)</h2>
+    <div class="hint" style="margin-bottom:14px;">여러 건을 한 번에 입력하고 맨 아래 "전체 등록"을 누르면 한꺼번에 출고지시로 등록돼요. 코드나 제품명 중 하나만 입력해도 자동으로 짝이 채워져요.</div>
+    <label style="display:inline-block; margin-right:12px;">날짜(공통)</label>
+    <input type="date" id="bulkDate" style="width:auto; display:inline-block; margin-bottom:14px;">
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:110px;">제품코드</th>
+            <th style="min-width:140px;">제품명</th>
+            <th style="min-width:70px;">1호차</th>
+            <th style="min-width:70px;">2호차</th>
+            <th style="min-width:70px;">3호차</th>
+            <th style="min-width:70px;">4호차</th>
+            <th style="min-width:80px;">추가차량</th>
+            <th style="min-width:130px;">위치/담당자</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="bulkEntryRows"></tbody>
+      </table>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button class="btn-ghost" id="bulkAddRowBtn" style="width:auto; padding:10px 18px;">+ 행 추가</button>
+      <button class="btn-primary" id="bulkSubmitBtn" style="width:auto; margin-top:0; padding:10px 22px;">전체 등록</button>
+    </div>
+  </div>
+
   </div>
 
   <div id="inventoryView" style="display:none;">
@@ -929,6 +966,92 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   }
 });
 
+// ===== 출고지시 일괄 입력 (엑셀형) =====
+const LOCATION_OPTIONS_HTML = document.getElementById('fNote').innerHTML;
+
+function makeBulkRow(){
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td><input type="text" class="bulk-input bulk-code" list="codeList" placeholder="코드" autocomplete="off"></td>'+
+    '<td><input type="text" class="bulk-input bulk-name" list="nameList" placeholder="제품명" autocomplete="off"></td>'+
+    '<td><input type="number" class="bulk-input bulk-v1" min="0" placeholder="0"></td>'+
+    '<td><input type="number" class="bulk-input bulk-v2" min="0" placeholder="0"></td>'+
+    '<td><input type="number" class="bulk-input bulk-v3" min="0" placeholder="0"></td>'+
+    '<td><input type="number" class="bulk-input bulk-v4" min="0" placeholder="0"></td>'+
+    '<td><input type="number" class="bulk-input bulk-v5" min="0" placeholder="0"></td>'+
+    '<td><select class="bulk-input bulk-note">'+LOCATION_OPTIONS_HTML+'</select></td>'+
+    '<td><button class="btn-danger" type="button">삭제</button></td>';
+  const codeInput = tr.querySelector('.bulk-code');
+  const nameInput = tr.querySelector('.bulk-name');
+  codeInput.addEventListener('input', ()=>{
+    const found = productsMap[codeInput.value.trim()];
+    if(found) nameInput.value = found;
+  });
+  nameInput.addEventListener('input', ()=>{
+    const found = productsByName[nameInput.value.trim()];
+    if(found) codeInput.value = found;
+  });
+  tr.querySelector('.btn-danger').addEventListener('click', ()=> tr.remove());
+  return tr;
+}
+
+document.getElementById('bulkAddRowBtn').addEventListener('click', ()=>{
+  document.getElementById('bulkEntryRows').appendChild(makeBulkRow());
+});
+
+for(let i=0; i<6; i++){
+  document.getElementById('bulkEntryRows').appendChild(makeBulkRow());
+}
+
+document.getElementById('bulkSubmitBtn').addEventListener('click', async ()=>{
+  if(!db){ toast('먼저 Firebase 설정을 완료해주세요.', true); return; }
+  if(!document.body.classList.contains('master-mode')){ toast('마스터관리자만 출고 지시를 등록할 수 있습니다.', true); return; }
+  const date = document.getElementById('bulkDate').value || todayStr();
+  const rows = Array.from(document.querySelectorAll('#bulkEntryRows tr'));
+  const toSubmit = [];
+  for(const tr of rows){
+    let code = tr.querySelector('.bulk-code').value.trim();
+    let name = tr.querySelector('.bulk-name').value.trim();
+    const v1 = Number(tr.querySelector('.bulk-v1').value)||0;
+    const v2 = Number(tr.querySelector('.bulk-v2').value)||0;
+    const v3 = Number(tr.querySelector('.bulk-v3').value)||0;
+    const v4 = Number(tr.querySelector('.bulk-v4').value)||0;
+    const v5 = Number(tr.querySelector('.bulk-v5').value)||0;
+    const note = tr.querySelector('.bulk-note').value;
+    if(!code && !name) continue;
+    const qty = v1+v2+v3+v4+v5;
+    if(qty === 0) continue;
+    if(code && !name) name = productsMap[code] || '';
+    if(name && !code) code = productsByName[name] || '';
+    toSubmit.push({ code, name, v1, v2, v3, v4, v5, qty, note });
+  }
+  if(toSubmit.length === 0){ toast('입력된 내용이 없습니다.', true); return; }
+  const btn = document.getElementById('bulkSubmitBtn');
+  btn.disabled = true; btn.textContent = '등록 중...';
+  try{
+    let batch = db.batch();
+    let opCount = 0;
+    for(const r of toSubmit){
+      const ref = db.collection('orders').doc();
+      batch.set(ref, {
+        date, productCode: r.code, productName: r.name,
+        v1: r.v1, v2: r.v2, v3: r.v3, v4: r.v4, v5: r.v5, qty: r.qty,
+        v1Done:false, v2Done:false, v3Done:false, v4Done:false, v5Done:false,
+        note: r.note, createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentEmployeeNo || ''
+      });
+      opCount++;
+      if(opCount >= 380){ await batch.commit(); batch = db.batch(); opCount = 0; }
+    }
+    if(opCount > 0) await batch.commit();
+    toast(toSubmit.length + '건 등록 완료');
+    document.getElementById('bulkEntryRows').innerHTML = '';
+    for(let i=0; i<6; i++){ document.getElementById('bulkEntryRows').appendChild(makeBulkRow()); }
+  }catch(e){
+    toast('등록 실패: ' + e.message, true);
+  }
+  btn.disabled = false; btn.textContent = '전체 등록';
+});
+
 function listenOrders(){
   const viewDate = document.getElementById('viewDate').value || todayStr();
   document.getElementById('viewDate').value = viewDate;
@@ -1395,6 +1518,7 @@ try{
 document.getElementById('fDate').value = todayStr();
 document.getElementById('invDate').value = todayStr();
 document.getElementById('invViewDate').value = todayStr();
+document.getElementById('bulkDate').value = todayStr();
 document.getElementById('inventoryStartDateInput').value = inventoryStartDate;
 document.getElementById('viewDate').value = todayStr();
 PRODUCTS_SEED.forEach(p=>{ productsMap[p.code] = p.name; if(p.name && !(p.name in productsByName)) productsByName[p.name] = p.code; });
